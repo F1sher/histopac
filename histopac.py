@@ -59,11 +59,17 @@ class Analyze_en():
         self.x_l = x_l
         self.x_r = x_r
 
+        self.integral = self.calc_integral()
         self.mean = self.calc_mean()
         self.fwhm = self.calc_fwhm()
+
         logging.info("mean = {}, calc = {}".format(self.mean, self.fwhm))
         
 
+    def calc_integral(self):
+        return 100
+        
+        
     def calc_mean(self):
         w_sum = sum([i * y for i, y in zip(range(self.x_l, self.x_r), self.en_spk[self.x_l:self.x_r])])
         
@@ -178,8 +184,50 @@ class Dialog_calibr_en(Gtk.Dialog):
         box.add(self.grid)
 
         self.show_all()
+
         
 
+class Calc_view_en():
+    def __init__(self):
+        self.txtview = Gtk.TextView()
+        self.buf = self.txtview.get_buffer()
+
+        self._integral_line = 1
+        self._area_line = 2
+        self._pos_line = 3
+        self._fwhm_line = 4
+        self._res_line = 5
+        
+        self.set_text("abrakadabra")
+        
+        
+    def set_text(self, text):
+        self.buf.set_text(text)
+
+
+    def set_analyze(self, analyze):
+        self.clr_buf()
+        self.set_integral(analyze.integral)
+        #set integral
+        #set area
+        #set pos
+        #set fwhm
+        #set res
+
+
+    def clr_buf(self):
+        start_iter = self.buf.get_start_iter()
+        end_inter = self.buf.get_end_iter()
+        self.buf.delete(start_iter, end_inter)
+
+
+    def set_integral(self, integral_val):
+        start_iter = self.buf.get_iter_at_line(self._integral_line)
+        text = "Integral: {:d}\n".format(integral_val)
+        self.buf.insert(start_iter, text, -1)
+        
+
+        
 class Create_UI(Gtk.Window):
     def __init__(self):
         Gtk.Window.__init__(self, title="histopac")
@@ -237,10 +285,8 @@ class Create_UI(Gtk.Window):
             vbox_en_spk_chooser.pack_start(self.check_btn_en[-1], False, False, 0)
 
         vbox_calc_en = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
-        textview_calc_en = Gtk.TextView()
-        self.textbuf_calc_en = textview_calc_en.get_buffer()
-        self.textbuf_calc_en.set_text("Calc results:\n - 1\n - 2")
-        vbox_calc_en.pack_start(textview_calc_en, False, False, 0)
+        self.calc_view_en = Calc_view_en()
+        vbox_calc_en.pack_start(self.calc_view_en.txtview, False, False, 0)
         grid_en.attach(vbox_calc_en, 0, 1, 1, 1)
         
         ##add buttons_cntrl
@@ -374,14 +420,16 @@ class Create_UI(Gtk.Window):
         if num_act_btns == 1:
             x_l = min(self.x_vlines_en)
             x_r = max(self.x_vlines_en)
-            res = Analyze_en(self.en_spk[btn_ind], x_l, x_r)
+            analyze = Analyze_en(self.en_spk[btn_ind], x_l, x_r)
             self.analyze_curve_en = self.ax_en.fill_between(range(x_l, x_r), self.en_spk[btn_ind][x_l:x_r],
                                                             color="#42f4ee")
-            self.analyze_mean_en = self.ax_en.vlines(res.mean, 0, self.en_spk[btn_ind][int(res.mean)])
+            self.analyze_mean_en = self.ax_en.vlines(analyze.mean, 0, self.en_spk[btn_ind][int(analyze.mean)])
             self.analyze_fwhm_en = self.ax_en.hlines(max(self.en_spk[btn_ind][x_l:x_r]) / 2,
-                                                     x_l + res.fwhm_ch_l,
-                                                     x_l + res.fwhm_ch_r)
+                                                     x_l + analyze.fwhm_ch_l,
+                                                     x_l + analyze.fwhm_ch_r)
             self.canvas_en.draw()
+
+            self.calc_view_en.set_analyze(analyze)
 
 
     def click_btn_clr_analyze_en(self, btn):
