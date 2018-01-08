@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-
+import logging
 from json import loads as json_loads
 from json import dumps as json_dumps
 
@@ -34,6 +34,10 @@ cfg_fname = "./testspk/cfg_.json"
 
             
 def main():
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(message)s",
+                        datefmt="%Y/%m/%d %H-%M-%S",
+                        level=logging.INFO)
+    
     ui = Create_UI()
     
     en_spk, t_spk = get_histos_from_folder("../sum_spk/res2/")
@@ -57,7 +61,7 @@ class Analyze_en():
 
         self.mean = self.calc_mean()
         self.fwhm = self.calc_fwhm()
-        print("mean = {}, calc = {}".format(self.mean, self.fwhm))
+        logging.info("mean = {}, calc = {}".format(self.mean, self.fwhm))
         
 
     def calc_mean(self):
@@ -364,7 +368,7 @@ class Create_UI(Gtk.Window):
         try:
             self._clr_analyze_en()
         except AttributeError:
-            print("AttributeError: in click_btn_analyze_en()")
+            logging.error("AttributeError in click_btn_analyze_en()")
             None
             
         if num_act_btns == 1:
@@ -384,7 +388,7 @@ class Create_UI(Gtk.Window):
         try:
             self._clr_analyze_en()
         except AttributeError:
-            print("AttributeError: in click_btn_clr_analyze_en()")
+            logging.error("AttributeError in click_btn_clr_analyze_en()")
             None
 
         self.canvas_en.draw()
@@ -515,7 +519,7 @@ class Create_UI(Gtk.Window):
             self.analyze_mean_en.remove()
             self.analyze_fwhm_en.remove()
         except ValueError:
-            print("ValueError: in _clr_analyze_en()")
+            logging.error("ValueError in _clr_analyze_en()")
             
         
     def _clr_vlines_en(self):
