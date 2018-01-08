@@ -6,7 +6,7 @@ from json import dumps as json_dumps
 
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk
+from gi.repository import Gtk, Pango
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_gtk3agg import FigureCanvasGTK3Agg as FigureCanvas
@@ -60,14 +60,24 @@ class Analyze_en():
         self.x_r = x_r
 
         self.integral = self.calc_integral()
+        self.area = self.calc_area()
         self.mean = self.calc_mean()
         self.fwhm = self.calc_fwhm()
-
+        self.resol = self.calc_resol()
+        
         logging.info("mean = {}, calc = {}".format(self.mean, self.fwhm))
         
 
     def calc_integral(self):
-        return 100
+        return sum(self.en_spk[self.x_l:self.x_r])
+
+
+    def calc_area(self):
+        bg_k = (self.en_spk[self.x_l] - self.en_spk[self.x_r]) / (self.x_l - self.x_r)
+        bg_b = self.en_spk[self.x_l] - bg_k * self.x_l
+        
+        return sum([self.en_spk[i] - bg_k * i - bg_b
+                    for i in range(self.x_l, self.x_r)])
         
         
     def calc_mean(self):
@@ -101,7 +111,10 @@ class Analyze_en():
         #print("fwhm_l = {}, fwhm_r = {}".format(self.x_l + fwhm_l, self.x_l + fwhm_r))
         
         return (self.fwhm_ch_r - self.fwhm_ch_l)
-        
+
+    def calc_resol(self):
+        return self.fwhm / self.mean
+    
 
 class Calibr_en():
     def __init__(self):
@@ -192,13 +205,17 @@ class Calc_view_en():
         self.txtview = Gtk.TextView()
         self.buf = self.txtview.get_buffer()
 
+        self.bold_tag = self.buf.create_tag("bold", weight=Pango.Weight.BOLD) 
+        self.large_size_tag = self.buf.create_tag("large_fontsize", size=14 * Pango.SCALE)
+
+        self._title_line = 0
         self._integral_line = 1
         self._area_line = 2
-        self._pos_line = 3
+        self._mean_line = 3
         self._fwhm_line = 4
-        self._res_line = 5
+        self._resol_line = 5
         
-        self.set_text("abrakadabra")
+        self.set_title("Analyze results")
         
         
     def set_text(self, text):
@@ -208,11 +225,10 @@ class Calc_view_en():
     def set_analyze(self, analyze):
         self.clr_buf()
         self.set_integral(analyze.integral)
-        #set integral
-        #set area
-        #set pos
-        #set fwhm
-        #set res
+        self.set_area(analyze.area)
+        self.set_mean(analyze.mean)
+        self.set_fwhm(analyze.fwhm)
+        self.set_resol(analyze.resol)
 
 
     def clr_buf(self):
@@ -221,12 +237,66 @@ class Calc_view_en():
         self.buf.delete(start_iter, end_inter)
 
 
-    def set_integral(self, integral_val):
-        start_iter = self.buf.get_iter_at_line(self._integral_line)
-        text = "Integral: {:d}\n".format(integral_val)
-        self.buf.insert(start_iter, text, -1)
-        
+    def set_title(self, txt):
+        self._insert_txt_at_line(txt, self._title_line)
 
+        self._apply_tag_at_line_offset("bold", self._title_line, len(txt))
+        self._apply_tag_at_line_offset("large_fontsize", self._title_line, len(txt))
+        
+        
+    def set_integral(self, integral_val):
+        txt = "Integral: {:.0f}k\n".format(integral_val / 1000)
+        self._insert_txt_at_line(txt, self._integral_line)
+
+        self._apply_tag_at_line_offset("bold", self._integral_line, len("Integral"))
+        self._apply_tag_at_line_offset("large_fontsize", self._integral_line, len(txt) - 1)
+
+        
+    def set_area(self, area_val):
+        txt = "Area: {:.0f}k\n".format(area_val / 1000)
+        self._insert_txt_at_line(txt, self._area_line)
+        
+        self._apply_tag_at_line_offset("bold", self._area_line, len("Area"))
+        self._apply_tag_at_line_offset("large_fontsize", self._area_line, len(txt) - 1)
+        
+        
+    def set_mean(self, mean_val):
+        txt = "Mean: {:.1f}\n".format(mean_val)
+        self._insert_txt_at_line(txt, self._mean_line)
+
+        self._apply_tag_at_line_offset("bold", self._mean_line, len("Mean"))
+        self._apply_tag_at_line_offset("large_fontsize", self._mean_line, len(txt) - 1)
+
+
+    def set_fwhm(self, fwhm_val):
+        txt = "FWHM: {:.1f}\n".format(fwhm_val)
+        self._insert_txt_at_line(txt, self._fwhm_line)
+
+        self._apply_tag_at_line_offset("bold", self._fwhm_line, len("FWHM"))
+        self._apply_tag_at_line_offset("large_fontsize", self._fwhm_line, len(txt) - 1)
+
+
+    def set_resol(self, resol_val):
+        txt = "Resolution: {:.2f}\n".format(resol_val)
+        self._insert_txt_at_line(txt, self._resol_line)
+
+        self._apply_tag_at_line_offset("bold", self._resol_line, len("Resolution"))
+        self._apply_tag_at_line_offset("large_fontsize", self._resol_line, len(txt) - 1)
+        
+        
+    def _insert_txt_at_line(self, txt, line):
+        start_iter = self.buf.get_iter_at_line(line)
+        self.buf.insert(start_iter, txt, -1)
+        
+        
+    def _apply_tag_at_line_offset(self, name_tag, start_line, offset):
+        start_iter = self.buf.get_iter_at_line(start_line - 1)
+        if offset == -1:
+            end_iter = self.buf.get_iter_at_line(start_line)
+        else:
+            end_iter = self.buf.get_iter_at_line_offset(start_line - 1, offset)
+        self.buf.apply_tag_by_name(name_tag, start_iter, end_iter)
+        
         
 class Create_UI(Gtk.Window):
     def __init__(self):
@@ -421,12 +491,13 @@ class Create_UI(Gtk.Window):
             x_l = min(self.x_vlines_en)
             x_r = max(self.x_vlines_en)
             analyze = Analyze_en(self.en_spk[btn_ind], x_l, x_r)
-            self.analyze_curve_en = self.ax_en.fill_between(range(x_l, x_r), self.en_spk[btn_ind][x_l:x_r],
+            self.analyze_curve_en = self.ax_en.fill_between(range(x_l, x_r+1), self.en_spk[btn_ind][x_l:x_r+1],
                                                             color="#42f4ee")
             self.analyze_mean_en = self.ax_en.vlines(analyze.mean, 0, self.en_spk[btn_ind][int(analyze.mean)])
             self.analyze_fwhm_en = self.ax_en.hlines(max(self.en_spk[btn_ind][x_l:x_r]) / 2,
                                                      x_l + analyze.fwhm_ch_l,
                                                      x_l + analyze.fwhm_ch_r)
+            
             self.canvas_en.draw()
 
             self.calc_view_en.set_analyze(analyze)
