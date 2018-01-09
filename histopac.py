@@ -32,7 +32,6 @@ det_clrs = ["r", "g", "b", "m"]
 cfg_fname = "./testspk/cfg_.json"
 
 
-            
 def main():
     logging.basicConfig(format="%(levelname)s:%(asctime)s:%(message)s",
                         datefmt="%Y/%m/%d %H-%M-%S",
@@ -55,10 +54,16 @@ def main():
 
 class Analyze_en():
     def __init__(self, en_spk, x_l, x_r):
-        self.en_spk = en_spk
+        self.en_spk = np.array(en_spk)
         self.x_l = x_l
         self.x_r = x_r
 
+        self.bg = self.calc_bg() 
+
+        self.en_spk[self.x_l:self.x_r] -= self.bg
+        #make zeros all negative elements in self.en_spk
+        self.en_spk[self.en_spk < 0] = 0
+        
         self.integral = self.calc_integral()
         self.area = self.calc_area()
         self.mean = self.calc_mean()
@@ -66,49 +71,66 @@ class Analyze_en():
         self.resol = self.calc_resol()
         
         logging.info("mean = {}, calc = {}".format(self.mean, self.fwhm))
-        
 
+
+    def calc_bg(self):
+        y_avg_l = sum(self.en_spk[self.x_l:self.x_l + 3]) / 3.0
+        y_avg_r = sum(self.en_spk[self.x_r - 3:self.x_r]) / 3.0
+
+        k_bg = (y_avg_r - y_avg_l) / (self.x_r - 1 - self.x_l - 1)
+        b_bg = y_avg_l - k_bg * (self.x_l + 1)
+
+        return np.array([k_bg * i + b_bg for i in range(self.x_l, self.x_r)], dtype = np.int64)
+
+        
     def calc_integral(self):
-        return sum(self.en_spk[self.x_l:self.x_r])
+        return np.sum(self.en_spk[self.x_l:self.x_r] + self.bg)
 
 
     def calc_area(self):
-        bg_k = (self.en_spk[self.x_l] - self.en_spk[self.x_r]) / (self.x_l - self.x_r)
-        bg_b = self.en_spk[self.x_l] - bg_k * self.x_l
-        
-        return sum([self.en_spk[i] - bg_k * i - bg_b
-                    for i in range(self.x_l, self.x_r)])
+        return np.sum(self.en_spk[self.x_l:self.x_r])
         
         
     def calc_mean(self):
-        w_sum = sum([i * y for i, y in zip(range(self.x_l, self.x_r), self.en_spk[self.x_l:self.x_r])])
+       # w_sum = sum([i * y for i, y in zip(range(self.x_l, self.x_r), self.en_spk[self.x_l:self.x_r])])
+        w_sum = np.sum(np.multiply(np.arange(self.x_l, self.x_r), self.en_spk[self.x_l:self.x_r]))
         
         return w_sum / sum(self.en_spk[self.x_l:self.x_r])
 
     
     def calc_fwhm(self):
         max_en_spk = max(self.en_spk[self.x_l:self.x_r])
-        
+
+        '''
         for y in self.en_spk[self.x_l:self.x_r]:
             if y >= max_en_spk / 2:
                 i = self.en_spk[self.x_l:self.x_r].index(y)
                 break
-
+        '''
+        i = np.where(self.en_spk[self.x_l:self.x_r] >= max_en_spk / 2)[0][0]
+        print("i_l = {}".format(i))
+            
         k_l = self.en_spk[self.x_l + i] - self.en_spk[self.x_l + i - 1]
         b_l = self.en_spk[self.x_l + i] - k_l * i
 
+        '''
         for y in self.en_spk[self.x_l + i:self.x_r]:
             if y <= max_en_spk / 2:
                 i = self.en_spk[self.x_l:self.x_r].index(y)
                 break
+        print("i_r = {}".format(i))
+        '''
 
+        i = i + 1 + np.where(self.en_spk[self.x_l + i + 1:self.x_r] <= max_en_spk / 2)[0][0]
+        print("i_r = {}".format(i))
+        
         k_r = self.en_spk[self.x_l + i] - self.en_spk[self.x_l + i - 1]
         b_r = self.en_spk[self.x_l + i] - k_r * i
 
         self.fwhm_ch_l = (max_en_spk / 2 - b_l) / k_l
         self.fwhm_ch_r = (max_en_spk / 2 - b_r) / k_r
-        #print("max_en_spk = {}".format(max_en_spk))
-        #print("fwhm_l = {}, fwhm_r = {}".format(self.x_l + fwhm_l, self.x_l + fwhm_r))
+
+        self.fwhm_y = max_en_spk / 2 + self.bg[np.where(self.en_spk[self.x_l:self.x_r] == max_en_spk)[0][0]]
         
         return (self.fwhm_ch_r - self.fwhm_ch_l)
 
@@ -494,9 +516,12 @@ class Create_UI(Gtk.Window):
             self.analyze_curve_en = self.ax_en.fill_between(range(x_l, x_r+1), self.en_spk[btn_ind][x_l:x_r+1],
                                                             color="#42f4ee")
             self.analyze_mean_en = self.ax_en.vlines(analyze.mean, 0, self.en_spk[btn_ind][int(analyze.mean)])
-            self.analyze_fwhm_en = self.ax_en.hlines(max(self.en_spk[btn_ind][x_l:x_r]) / 2,
-                                                     x_l + analyze.fwhm_ch_l,
-                                                     x_l + analyze.fwhm_ch_r)
+            self.analyze_fwhm_en = self.ax_en.hlines(analyze.fwhm_y,
+                                                     x_l + analyze.fwhm_ch_l + 1,
+                                                     x_l + analyze.fwhm_ch_r + 1)
+            print("analyze_fwhm = ({:.0f} {:.0f} {:.0f})".format(analyze.fwhm_y, #max(self.en_spk[btn_ind][x_l:x_r]) / 2,
+                                                                 x_l + analyze.fwhm_ch_l,
+                                                                 x_l + analyze.fwhm_ch_r))
             
             self.canvas_en.draw()
 
