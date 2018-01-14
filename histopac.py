@@ -25,9 +25,14 @@ histo_size = 4096 #(chanels)
 histo_finisize = 512
 histo_fsize = 16384 #(bytes)
 histo_en_fnames = ["BUFKA" + str(i) + ".SPK" for i in range(1, 5)]
-histo_t_fnames = ["T12", "T21"]
+histo_t_fnames = ["TIME1.SPK", "TIME2.SPK", "TIME3.SPK", "TIME4.SPK",
+                  "TIME5.SPK", "TIME6.SPK", "TIME7.SPK", "TIME8.SPK",
+                  "TIME9.SPK", "TIME10.SPK", "TIME11.SPK", "TIME12.SPK"]
 
-det_clrs = ["r", "g", "b", "m"]
+det_colors = ["r", "g", "b", "m"]
+t_spk_colors = ["#ff0000", "#ff6565", "#008000", "#3cbc3c",
+                "#0000ff", "#6565ff", "#bf00bf", "#cd6fcc",
+                "#000000", "#656565", "#00bfbf", "#63ddde"]
 
 cfg_fname = "./testspk/cfg_.json"
 
@@ -47,6 +52,8 @@ def main():
     cfg = parse_cfg("./testspk/cfg.json")
     save_cfg(cfg, "./testspk/cfg_.json")
     ui.set_cfg(cfg)
+
+    ui.hide_all_spk_t()
     
     ui.show_all()
     Gtk.main()
@@ -359,7 +366,7 @@ class Create_UI(Gtk.Window):
         grid_en = Gtk.Grid()
         grid_en.set_row_spacing(10)
         
-        #Check buttons for EN
+        ###Check buttons for EN
         vbox_en_spk_chooser = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
         grid_en.attach(vbox_en_spk_chooser, 0, 0, 1, 1)
 
@@ -409,15 +416,43 @@ class Create_UI(Gtk.Window):
                        
         hbox_en.pack_start(vbox_mpl_en, True, True, 0)
         hbox_en.pack_start(grid_en, False, False, 5)
-        
-        hbox_t.pack_start(self.canvas_t, True, True, 0)
 
-        self.fig_t = Figure(figsize=(5, 4), dpi=100)
+        ###Figs t spk###
+        self.fig_t = Figure(figsize = (5, 4), dpi = 100, tight_layout = True)
         self.canvas_t = FigureCanvas(self.fig_t)
-        
-        
-        
 
+        self.ax_t = self.fig_t.add_subplot(111)
+        self.ax_t.autoscale(False, "both", True)
+        
+        nav_toolbar_t = NavigationToolbar(self.canvas_t, self)
+        
+        vbox_mp_t = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
+        vbox_mp_t.pack_start(self.canvas_t, True, True, 0)
+        vbox_mp_t.pack_start(nav_toolbar_t, False, False, 0)
+        
+        grid_t = Gtk.Grid()
+        grid_t.set_row_spacing(10)
+
+        #Check buttons for T
+        vbox_t_spk_chooser = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
+        grid_t.attach(vbox_t_spk_chooser, 0, 0, 1, 1)
+
+        vbox_t_spk_chooser.pack_start(Gtk.Label("T spk"), False, False, 0)
+        self.check_btn_t = []
+        grid_check_btn_t = Gtk.Grid()
+        grid_check_btn_t.set_row_spacing(5)
+        for i in range(t_spk_num):
+            self.check_btn_t.append(Gtk.CheckButton.new_with_label(gui_name.t[i]))
+            self.check_btn_t[-1].set_active(True)
+            self.check_btn_t[-1].connect("toggled", self.toggle_check_btn_t, gui_name.t[i])
+            grid_check_btn_t.attach(self.check_btn_t[-1], i % 2, i / 2, 1, 1)
+            
+        vbox_t_spk_chooser.pack_start(grid_check_btn_t, False, False, 0)
+        
+        hbox_t.pack_start(vbox_mp_t, True, True, 0)
+        hbox_t.pack_start(grid_t, False, False, 5)
+
+        
     def main_quit(self, event, data):
         logging.info("quit | data = {}".format(data))
         #save params in file
@@ -525,9 +560,9 @@ class Create_UI(Gtk.Window):
                                                             color="#42f4ee")
             self.analyze_mean_en = self.ax_en.vlines(analyze.mean, 0, self.en_spk[btn_ind][int(analyze.mean)])
             self.analyze_fwhm_en = self.ax_en.hlines(analyze.fwhm_y,
-                                                     x_l + analyze.fwhm_ch_l + 1,
-                                                     x_l + analyze.fwhm_ch_r + 1)
-            print("analyze_fwhm = ({:.0f} {:.0f} {:.0f})".format(analyze.fwhm_y, #max(self.en_spk[btn_ind][x_l:x_r]) / 2,
+                                                     x_l + analyze.fwhm_ch_l,
+                                                     x_l + analyze.fwhm_ch_r)
+            print("analyze_fwhm = ({:.0f} {:.1f} {:.1f})".format(analyze.fwhm_y, #max(self.en_spk[btn_ind][x_l:x_r]) / 2,
                                                                  x_l + analyze.fwhm_ch_l,
                                                                  x_l + analyze.fwhm_ch_r))
             
@@ -620,21 +655,17 @@ class Create_UI(Gtk.Window):
 
         
     def plot_histo_name(self, name):
-        #for line in self.ax_en.lines:
-        #    self.ax_en.lines.remove(line)
-        x = range(histo_size)
-        
         if name in gui_name.en:
             ind = gui_name.en.index(name)
-            #self.ax_en.plot(x, self.en_spk[ind], det_clrs[ind])
             self.en_lines[ind].set_ydata(self.en_spk[ind])
-            
             self.canvas_en.draw()
+        elif name in gui_name.t:
+            ind = gui_name.t.index(name)
+            self.t_lines[ind].set_ydata(self.t_spk[ind])
+            self.canvas_t.draw()
             
     def clr_histo_name(self, name):
-        x = range(histo_size)
         y_zeros = [0] * histo_size
-        #self.ax_en.cla()
         
         for n in gui_name.en:
             ind = gui_name.en.index(n)
@@ -642,20 +673,35 @@ class Create_UI(Gtk.Window):
 
             if btn.get_active() is False:
                 self.en_lines[ind].set_ydata(y_zeros)
-                #self.ax_en.plot(x, self.en_spk[ind], det_clrs[ind])
 
         self.canvas_en.draw()
+
+        for n in gui_name.t:
+            ind = gui_name.t.index(n)
+            btn = self.check_btn_t[ind]
+
+            if btn.get_active() is False:
+                self.t_lines[ind].set_ydata(y_zeros)
+
+        self.canvas_t.draw()
+
         
     def plot_all_histos(self):
         self.en_lines = []
+        self.t_lines = []
         x = range(histo_size)
         
         for i in range(det_num):
-            self.en_lines.append( self.ax_en.plot(x, self.en_spk[i], det_clrs[i])[0] )
-        self.set_lim_vals_en(0)
-            
+            self.en_lines.append( self.ax_en.plot(x, self.en_spk[i], marker="o",
+                                                  ms=3, mew=0, c=det_colors[i], lw=1.0)[0] )
+        self.set_lim_vals_en(0)     
         self.canvas_en.draw()
 
+        for i in range(t_spk_num):
+            self.t_lines.append( self.ax_t.plot(x, self.t_spk[i], marker="o",
+                                                ms=5, mew=0, c=t_spk_colors[i], lw=0)[0] )
+        self.set_lim_vals_t(0)     
+        self.canvas_t.draw()
 
     def set_lim_vals_en(self, flag):
         if flag == 0:
@@ -664,6 +710,13 @@ class Create_UI(Gtk.Window):
             self.ax_en.set_xlim(self.x_en_min0, self.x_en_max0)
             self.ax_en.set_ylim(self.y_en_min0, self.y_en_max0)
 
+    def set_lim_vals_t(self, flag):
+        if flag == 0:
+            self.x_t_min0, self.x_t_max0 = 0, histo_size
+            self.y_t_min0, self.y_t_max0 = 0, 1.05 * max([max(spk) for spk in self.t_spk])
+            self.ax_t.set_xlim(self.x_t_min0, self.x_t_max0)
+            self.ax_t.set_ylim(self.y_t_min0, self.y_t_max0)
+            
 
     def _clr_analyze_en(self):
         try:
@@ -680,26 +733,45 @@ class Create_UI(Gtk.Window):
 
         self.vlines_en = []
         self.x_vlines_en = []
-            
 
+
+    def toggle_check_btn_t(self, btn, name):
+        if name in gui_name.t:
+            ind = gui_name.t.index(name)
+            btn = self.check_btn_t[ind]
+            if btn.get_active():
+                self.plot_histo_name(name)
+            else:
+                self.clr_histo_name(name)
+                
+
+    def hide_all_spk_t(self):
+        for i in range(t_spk_num):
+            self.check_btn_t[i].set_active(False)
+            self.check_btn_t[i].emit("toggled")
+
+            
+                
 def get_histos_from_folder(foldername = "./testspk/"):
     foldername = foldername if foldername[-1] == "/" else foldername + "/"
     
     en_spk = []
-    i = 0
     for fname in histo_en_fnames:
         with open(foldername + fname, "rb") as fd:
             fd.seek(histo_finisize, 0)
             en_spk.append(fd.read(histo_fsize))
-            en_spk[i] = unpack(str(histo_size) + "i", en_spk[i])
-            
-        i += 1
+            en_spk[-1] = unpack(str(histo_size) + "i", en_spk[-1])
 
     t_spk = []
-    i = 0
-
-    return en_spk, t_spk
+    for fname in histo_t_fnames:
+        with open(foldername + fname, "rb") as fd:
+            fd.seek(histo_finisize, 0)
+            t_spk.append(fd.read(histo_fsize))
+            t_spk[-1] = unpack(str(histo_size) + "i", t_spk[-1])
             
+    return en_spk, t_spk
+
+
 
 def parse_cfg(path_cfg_file):
     cfg = {}
@@ -721,6 +793,7 @@ def parse_cfg(path_cfg_file):
     return cfg
 
 
+
 def save_cfg(cfg, path_cfg_file):
     with open(path_cfg_file, 'w') as cfg_file:
         def dict_to_true_cfg_str(d):
@@ -739,7 +812,8 @@ def save_cfg(cfg, path_cfg_file):
             return res
 
         cfg_file.write(dict_to_true_cfg_str(cfg))
-    
+
+        
 
 if __name__ == "__main__":
     main()
