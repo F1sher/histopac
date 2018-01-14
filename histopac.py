@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import click
 import logging
 from json import loads as json_loads
 from json import dumps as json_dumps
@@ -37,14 +38,25 @@ t_spk_colors = ["#ff0000", "#ff6565", "#008000", "#3cbc3c",
 cfg_fname = "./testspk/cfg_.json"
 
 
-def main():
+
+@click.command()
+@click.argument("dir_name", type=click.Path(exists=True))
+def main(dir_name):
+    """
+    The main function of the histopac.
+    Creates window, loads and plots spectra.
+
+    Args:\n
+        dir_name (str): Directory name with PAC spectra.
+    """
+    
     logging.basicConfig(format="%(levelname)s:%(asctime)s:%(message)s",
                         datefmt="%Y/%m/%d %H-%M-%S",
                         level=logging.INFO)
     
     ui = Create_UI()
     
-    en_spk, t_spk = get_histos_from_folder("./180112_181Hf_RhGe_4K_4d/")
+    en_spk, t_spk = get_histos_from_folder(dir_name)
 
     ui.set_histos(en_spk, t_spk)
     ui.plot_all_histos()
