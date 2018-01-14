@@ -39,7 +39,7 @@ def main():
     
     ui = Create_UI()
     
-    en_spk, t_spk = get_histos_from_folder("../sum_spk/res2/")
+    en_spk, t_spk = get_histos_from_folder("./180112_181Hf_RhGe_4K_4d/")
 
     ui.set_histos(en_spk, t_spk)
     ui.plot_all_histos()
@@ -323,7 +323,7 @@ class Calc_view_en():
 class Create_UI(Gtk.Window):
     def __init__(self):
         Gtk.Window.__init__(self, title="histopac")
-        self.connect("delete-event", Gtk.main_quit)
+        self.connect("delete-event", self.main_quit)
 
         box_main = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
         self.add(box_main)
@@ -341,7 +341,6 @@ class Create_UI(Gtk.Window):
         stack.add_titled(hbox_t, "T stack", "T histo")
         
         self.fig_en = Figure(figsize = (5, 4), dpi = 100, tight_layout = True)
-        
         self.canvas_en = FigureCanvas(self.fig_en)
         self.canvas_en.mpl_connect("motion_notify_event", self.motion_mpl_en)
         self.canvas_en.mpl_connect("button_press_event", self.press_btn_mpl_en)
@@ -354,11 +353,7 @@ class Create_UI(Gtk.Window):
         vbox_mpl_en = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
         vbox_mpl_en.pack_start(self.canvas_en, True, True, 0)
         vbox_mpl_en.pack_start(nav_toolbar_en, False, False, 0)
-        ###
-
-        self.fig_t = Figure(figsize=(5, 4), dpi=100)
-        self.canvas_t = FigureCanvas(self.fig_t)
-
+        
         self.calibr_en = Calibr_en()
         
         grid_en = Gtk.Grid()
@@ -417,6 +412,19 @@ class Create_UI(Gtk.Window):
         
         hbox_t.pack_start(self.canvas_t, True, True, 0)
 
+        self.fig_t = Figure(figsize=(5, 4), dpi=100)
+        self.canvas_t = FigureCanvas(self.fig_t)
+        
+        
+        
+
+    def main_quit(self, event, data):
+        logging.info("quit | data = {}".format(data))
+        #save params in file
+        #save check EN and T btns pos
+        
+        Gtk.main_quit()
+        
         
     def count_act_check_btns(self):
         num_act_btns = 0
