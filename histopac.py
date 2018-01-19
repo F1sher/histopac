@@ -43,8 +43,9 @@ cfg_fname = "./testspk/cfg_.json"
 @click.argument("dir_name", type=click.Path(exists=True))
 def main(dir_name):
     """
-    The main function of the histopac.
-    Creates window, loads and plots spectra.
+    Load and plot PAC spectra.
+    histopac allows to view/set ENergy windows,
+    analyze ENergy and Time peaks, analyze Time exponents.
 
     Args:\n
         dir_name (str): Directory name with PAC spectra.
@@ -71,6 +72,7 @@ def main(dir_name):
     Gtk.main()
 
 
+    
 class Analyze_en():
     def __init__(self, en_spk, x_l, x_r):
         self.en_spk = np.array(en_spk)
@@ -155,7 +157,7 @@ class Analyze_en():
 
     def calc_resol(self):
         return self.fwhm / self.mean
-    
+
 
 class Calibr_en():
     def __init__(self):
@@ -337,7 +339,53 @@ class Calc_view_en():
         else:
             end_iter = self.buf.get_iter_at_line_offset(start_line - 1, offset)
         self.buf.apply_tag_by_name(name_tag, start_iter, end_iter)
+
+
+class Analyze_exp_t():
+    def __init__(self, t_spk, x_l, x_r):
+        self.t_spk = t_spk
+        self.x_l = x_l
+        self.x_r = x_r
+        self.exp_right = self.is_exp_right()
         
+        self.bg = self.calc_bg()
+        
+        self.exp_approximation = self.approx_exp()
+
+        
+    def calc_bg(self):
+        if self.exp_right:
+            avg = self.t_spk[self.x_r - 4:self.x_r + 4] / 8.0
+        else:
+            avg = self.t_spk[self.x_l - 4:self.x_l + 4] / 8.0
+            
+        return np.array((self.x_r - self.x_l) * [avg], dtype = np.int64)
+
+
+    def approx_exp(self):
+        """
+        Approximate exponent with A * exp (-t / tau)
+        """
+        x = np.arange(self.x_l, self.x_r)
+        y = np.log( np.clip(self.t_spk[self.x_l:self.x_r] - self.bg, 1, self.t_spk[self.x_l:self.x_r].max()) )
+
+        p1, p0 = np.polyfit(x, y, 1) # y = p1 * x + p0
+        self.tau = -1.0 / p1
+        self.A = np.exp(p0)
+
+        return np.array([A * np.exp(-i / self.tau) for i in np.arange(self.x_l, self.x_r)]) + self.bg
+        
+
+    def is_exp_right(self):
+        """
+        True if exp is right (i.e. |\)
+        False if exp is left (i.e. /|)
+        """
+        l_avg_bins = self.t_spk[self.x_l - 2:self.x_l + 2] / 4.0
+        r_avg_bins = self.t_spk[self.x_r - 2:self.x_r + 2] / 4.0
+
+        return True if l_avg_bins > r_avg_bins else False
+    
         
 class Create_UI(Gtk.Window):
     def __init__(self):
@@ -432,6 +480,7 @@ class Create_UI(Gtk.Window):
         ###Figs t spk###
         self.fig_t = Figure(figsize = (5, 4), dpi = 100, tight_layout = True)
         self.canvas_t = FigureCanvas(self.fig_t)
+        self.canvas_t.mpl_connect("button_press_event", self.press_btn_mpl_t)
 
         self.ax_t = self.fig_t.add_subplot(111)
         self.ax_t.autoscale(False, "both", True)
@@ -460,6 +509,20 @@ class Create_UI(Gtk.Window):
             grid_check_btn_t.attach(self.check_btn_t[-1], i % 2, i / 2, 1, 1)
             
         vbox_t_spk_chooser.pack_start(grid_check_btn_t, False, False, 0)
+
+        grid_btns_cntrl = Gtk.Grid()
+        btn_analyze_peak_t = Gtk.Button("Peak Analyze")
+        btn_analyze_peak_t.connect("clicked", self.click_btn_analyze_peak_t)
+        btn_analyze_exp_t = Gtk.Button("Exp Analyze")
+        btn_analyze_exp_t.connect("clicked", self.click_btn_analyze_exp_t)
+        btn_clr_analyze_t = Gtk.Button("Clear Analyze")
+        btn_clr_analyze_t.connect("clicked", self.click_btn_clr_analyze_t)
+
+        grid_btns_cntrl.attach(btn_analyze_peak_t, 0, 0, 1, 1)
+        grid_btns_cntrl.attach(btn_analyze_exp_t, 1, 0, 1, 1)
+        grid_btns_cntrl.attach(btn_clr_analyze_t, 0, 1, 1, 1)
+
+        grid_t.attach(grid_btns_cntrl, 0, 1, 1, 1)
         
         hbox_t.pack_start(vbox_mp_t, True, True, 0)
         hbox_t.pack_start(grid_t, False, False, 5)
@@ -473,7 +536,7 @@ class Create_UI(Gtk.Window):
         Gtk.main_quit()
         
         
-    def count_act_check_btns(self):
+    def count_act_check_btns_en(self):
         num_act_btns = 0
         btn_ind = -1
         for i in range(det_num):
@@ -486,7 +549,7 @@ class Create_UI(Gtk.Window):
         
     def motion_mpl_en(self, event):
         txt = ""
-        num_act_btns, btn_ind = self.count_act_check_btns()
+        num_act_btns, btn_ind = self.count_act_check_btns_en()
                 
         if num_act_btns == 1:
             try:
@@ -501,7 +564,7 @@ class Create_UI(Gtk.Window):
 
     def press_btn_mpl_en(self, event):
         r_mouse_btn = 3
-        num_act_btns, btn_ind = self.count_act_check_btns()
+        num_act_btns, btn_ind = self.count_act_check_btns_en()
 
         if num_act_btns == 1:
             if event.button == r_mouse_btn:
@@ -514,11 +577,10 @@ class Create_UI(Gtk.Window):
                     self.vlines_en = []
                     self.x_vlines_en = []
                      
-                x = int(event.xdata)
+                x = int(round(event.xdata))
                 y = self.en_spk[btn_ind][x]
 
                 self.x_vlines_en.append(x)
-                
                 self.vlines_en.append(self.ax_en.vlines(x = x,
                                                         ymin = 0,
                                                         ymax = y,
@@ -556,7 +618,7 @@ class Create_UI(Gtk.Window):
 
 
     def click_btn_analyze_en(self, btn):
-        num_act_btns, btn_ind = self.count_act_check_btns()
+        num_act_btns, btn_ind = self.count_act_check_btns_en()
 
         try:
             self._clr_analyze_en()
@@ -567,14 +629,18 @@ class Create_UI(Gtk.Window):
         if num_act_btns == 1:
             x_l = min(self.x_vlines_en)
             x_r = max(self.x_vlines_en)
+
             analyze = Analyze_en(self.en_spk[btn_ind], x_l, x_r)
-            self.analyze_curve_en = self.ax_en.fill_between(range(x_l, x_r+1), self.en_spk[btn_ind][x_l:x_r+1],
+            self.analyze_curve_en = self.ax_en.fill_between(range(x_l, x_r+1),
+                                                            self.en_spk[btn_ind][x_l:x_r+1],
                                                             color="#42f4ee")
-            self.analyze_mean_en = self.ax_en.vlines(analyze.mean, 0, self.en_spk[btn_ind][int(analyze.mean)])
+            self.analyze_mean_en = self.ax_en.vlines(analyze.mean,
+                                                     0,
+                                                     self.en_spk[btn_ind][int(analyze.mean)])
             self.analyze_fwhm_en = self.ax_en.hlines(analyze.fwhm_y,
                                                      x_l + analyze.fwhm_ch_l,
                                                      x_l + analyze.fwhm_ch_r)
-            print("analyze_fwhm = ({:.0f} {:.1f} {:.1f})".format(analyze.fwhm_y, #max(self.en_spk[btn_ind][x_l:x_r]) / 2,
+            print("analyze_fwhm = ({:.0f} {:.1f} {:.1f})".format(analyze.fwhm_y,
                                                                  x_l + analyze.fwhm_ch_l,
                                                                  x_l + analyze.fwhm_ch_r))
             
@@ -597,7 +663,7 @@ class Create_UI(Gtk.Window):
         if len(self.x_vlines_en) != 2:
             None
         else:
-            num_act_btns, btn_ind = self.count_act_check_btns()
+            num_act_btns, btn_ind = self.count_act_check_btns_en()
             
             self.x_vlines_en.sort()
             #cfg lef wins set
@@ -614,7 +680,7 @@ class Create_UI(Gtk.Window):
         if len(self.x_vlines_en) != 2:
             None
         else:
-            num_act_btns, btn_ind = self.count_act_check_btns()
+            num_act_btns, btn_ind = self.count_act_check_btns_en()
             
             self.x_vlines_en.sort()
             #cfg lef wins set
@@ -629,7 +695,7 @@ class Create_UI(Gtk.Window):
             
     def click_btn_en_show_wins(self, btn):
         if btn.get_label() == "Show Wins":
-            num_act_btns, btn_ind = self.count_act_check_btns()
+            num_act_btns, btn_ind = self.count_act_check_btns_en()
 
             if num_act_btns == 1:
                 btn.set_label("Hide Wins")
@@ -656,6 +722,65 @@ class Create_UI(Gtk.Window):
             self.lines_rwin.remove()
 
         self.canvas_en.draw()
+
+
+    def count_act_check_btns_t(self):
+        num_act_btns = 0
+        btn_ind = -1
+        for i in range(t_spk_num):
+            if self.check_btn_t[i].get_active():
+                num_act_btns += 1 
+                btn_ind = i
+
+        return num_act_btns, btn_ind
+        
+
+    def press_btn_mpl_t(self, event):
+        r_mouse_btn = 3
+        num_act_btns, btn_ind = self.count_act_check_btns_t()
+
+        if num_act_btns == 1:
+            if event.button == r_mouse_btn:
+                try:
+                    self.vlines_t
+                    
+                    if len(self.vlines_t) == 2:
+                        self._clr_vlines_t()
+                except AttributeError:
+                    self.vlines_t = []
+                    self.x_vlines_t = []
+
+                x = int(round(event.xdata))
+                y = self.t_spk[btn_ind][x]
+
+                self.x_vlines_t.append(x)
+                self.vlines_t.append(self.ax_t.vlines(x = x,
+                                                      ymin = 0,
+                                                      ymax = y,
+                                                      color = "black"))
+
+                self.canvas_t.draw()
+                    
+        
+    def click_btn_analyze_peak_t(self, btn):
+        logging.info("Click btn analyze peak")
+
+
+    def click_btn_analyze_exp_t(self, btn):
+        logging.info("Click btn analyze exp")
+        num_act_btns, btn_ind = self.count_act_check_btns_t()
+
+        #_clr_analyze_t()
+
+        if num_act_btns == 1:
+            x_l = min(self.x_vlines_t)
+            x_r = max(self.x_vlines_t)
+
+            analyze = Analyze_exp_t(self.t_spk[btn_ind], x_l, x_r)
+        
+
+    def click_btn_clr_analyze_t(self, btn):
+        logging.info("Click btn clr analyze t")
         
         
     def set_histos(self, en_spk, t_spk):
@@ -746,6 +871,14 @@ class Create_UI(Gtk.Window):
         self.vlines_en = []
         self.x_vlines_en = []
 
+
+    def _clr_vlines_t(self):
+        self.vlines_t[0].remove()
+        self.vlines_t[1].remove()
+
+        self.vlines_t = []
+        self.x_vlines_t = []
+    
 
     def toggle_check_btn_t(self, btn, name):
         if name in gui_name.t:
