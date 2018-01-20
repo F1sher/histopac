@@ -4,6 +4,7 @@ import click
 import logging
 from json import loads as json_loads
 from json import dumps as json_dumps
+from json import dump as json_dump
 
 import gi
 gi.require_version('Gtk', '3.0')
@@ -51,7 +52,7 @@ def main(dir_name):
         dir_name (str): Directory name with PAC spectra.
     """
     
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(message)s",
+    logging.basicConfig(format="{File %(filename)s, line %(lineno)d} %(levelname)s:%(asctime)s:%(message)s",
                         datefmt="%Y/%m/%d %H-%M-%S",
                         level=logging.INFO)
     
@@ -71,6 +72,7 @@ def main(dir_name):
     ui.show_all()
     Gtk.main()
 
+    new_save_cfg(cfg, "./testspk/cfg__.json")
 
     
 class Analyze_en():
@@ -129,7 +131,7 @@ class Analyze_en():
                 break
         '''
         i = np.where(self.en_spk[self.x_l:self.x_r] >= max_en_spk / 2)[0][0]
-        print("i_l = {}".format(i))
+        print("i_l = {}".format(self.x_l + i))
             
         k_l = self.en_spk[self.x_l + i] - self.en_spk[self.x_l + i - 1]
         b_l = self.en_spk[self.x_l + i] - k_l * i
@@ -142,8 +144,9 @@ class Analyze_en():
         print("i_r = {}".format(i))
         '''
 
-        i = i + 1 + np.where(self.en_spk[self.x_l + i + 1:self.x_r] <= max_en_spk / 2)[0][0]
-        print("i_r = {}".format(i))
+        i_r_shift = 20
+        i = i + i_r_shift + np.where(self.en_spk[self.x_l + i + i_r_shift:self.x_r] <= max_en_spk / 2)[0][0]
+        print("i_r = {}".format(self.x_l + i))
         
         k_r = self.en_spk[self.x_l + i] - self.en_spk[self.x_l + i - 1]
         b_r = self.en_spk[self.x_l + i] - k_r * i
@@ -158,6 +161,7 @@ class Analyze_en():
     def calc_resol(self):
         return self.fwhm / self.mean
 
+    
 
 class Calibr_en():
     def __init__(self):
@@ -350,14 +354,14 @@ class Analyze_exp_t():
         
         self.bg = self.calc_bg()
         
-        self.exp_approximation = self.approx_exp()
+        self.curve_exp = self.approx_exp()
 
         
     def calc_bg(self):
         if self.exp_right:
-            avg = self.t_spk[self.x_r - 4:self.x_r + 4] / 8.0
+            avg = np.sum(self.t_spk[self.x_r - 4:self.x_r + 4]) / 8.0
         else:
-            avg = self.t_spk[self.x_l - 4:self.x_l + 4] / 8.0
+            avg = np.sum(self.t_spk[self.x_l - 4:self.x_l + 4]) / 8.0
             
         return np.array((self.x_r - self.x_l) * [avg], dtype = np.int64)
 
@@ -367,13 +371,15 @@ class Analyze_exp_t():
         Approximate exponent with A * exp (-t / tau)
         """
         x = np.arange(self.x_l, self.x_r)
-        y = np.log( np.clip(self.t_spk[self.x_l:self.x_r] - self.bg, 1, self.t_spk[self.x_l:self.x_r].max()) )
+        y = np.log( np.clip(self.t_spk[self.x_l:self.x_r] - self.bg,
+                            1,
+                            np.amax(self.t_spk[self.x_l:self.x_r])) )
 
         p1, p0 = np.polyfit(x, y, 1) # y = p1 * x + p0
         self.tau = -1.0 / p1
         self.A = np.exp(p0)
 
-        return np.array([A * np.exp(-i / self.tau) for i in np.arange(self.x_l, self.x_r)]) + self.bg
+        return np.array([self.A * np.exp(-i / self.tau) for i in np.arange(self.x_l, self.x_r)]) + self.bg
         
 
     def is_exp_right(self):
@@ -381,10 +387,11 @@ class Analyze_exp_t():
         True if exp is right (i.e. |\)
         False if exp is left (i.e. /|)
         """
-        l_avg_bins = self.t_spk[self.x_l - 2:self.x_l + 2] / 4.0
-        r_avg_bins = self.t_spk[self.x_r - 2:self.x_r + 2] / 4.0
+        l_avg_bins = np.sum(self.t_spk[self.x_l - 2:self.x_l + 2]) / 4.0
+        r_avg_bins = np.sum(self.t_spk[self.x_r - 2:self.x_r + 2]) / 4.0
 
         return True if l_avg_bins > r_avg_bins else False
+
     
         
 class Create_UI(Gtk.Window):
@@ -770,17 +777,33 @@ class Create_UI(Gtk.Window):
         logging.info("Click btn analyze exp")
         num_act_btns, btn_ind = self.count_act_check_btns_t()
 
-        #_clr_analyze_t()
-
+        try:
+            self._clr_analyze_t()
+        except AttributeError:
+            logging.error("AttributeError in click_btn_analyze_exp_t()")
+            None
+            
         if num_act_btns == 1:
             x_l = min(self.x_vlines_t)
             x_r = max(self.x_vlines_t)
 
             analyze = Analyze_exp_t(self.t_spk[btn_ind], x_l, x_r)
-        
+            self.analyze_exp_t = self.ax_t.plot(np.arange(analyze.x_l, analyze.x_r),
+                                                analyze.curve_exp,
+                                                c="#ecff00",
+                                                lw=2)
 
+            self.canvas_t.draw()
+            
+            
     def click_btn_clr_analyze_t(self, btn):
-        logging.info("Click btn clr analyze t")
+        try:
+            self._clr_analyze_t()
+        except AttributeError:
+            logging.error("AttributeError in click_btn_clr_analyze_t()")
+            None
+
+        self.canvas_t.draw()
         
         
     def set_histos(self, en_spk, t_spk):
@@ -837,9 +860,11 @@ class Create_UI(Gtk.Window):
         for i in range(t_spk_num):
             self.t_lines.append( self.ax_t.plot(x, self.t_spk[i], marker="o",
                                                 ms=5, mew=0, c=t_spk_colors[i], lw=0)[0] )
-        self.set_lim_vals_t(0)     
+        self.set_lim_vals_t(0)
+        
         self.canvas_t.draw()
 
+        
     def set_lim_vals_en(self, flag):
         if flag == 0:
             self.x_en_min0, self.x_en_max0 = 0, histo_size
@@ -847,6 +872,7 @@ class Create_UI(Gtk.Window):
             self.ax_en.set_xlim(self.x_en_min0, self.x_en_max0)
             self.ax_en.set_ylim(self.y_en_min0, self.y_en_max0)
 
+            
     def set_lim_vals_t(self, flag):
         if flag == 0:
             self.x_t_min0, self.x_t_max0 = 0, histo_size
@@ -862,8 +888,21 @@ class Create_UI(Gtk.Window):
             self.analyze_fwhm_en.remove()
         except ValueError:
             logging.error("ValueError in _clr_analyze_en()")
+
+
+    def _clr_analyze_t(self):
+        logging.info("_clr_analyze_t()")
+        try:
+            logging.info("before del {}".format(self.analyze_exp_t))
+            self.ax_t.lines.remove(self.analyze_exp_t[-1])
+            del self.analyze_exp_t[-1]
+            logging.info("after del {}".format(self.analyze_exp_t))
             
-        
+            self.canvas_t.draw()
+        except ValueError:
+            logging.error("ValueError in _clr_analyze_t()")
+
+            
     def _clr_vlines_en(self):
         self.vlines_en[0].remove()
         self.vlines_en[1].remove()
@@ -958,7 +997,13 @@ def save_cfg(cfg, path_cfg_file):
 
         cfg_file.write(dict_to_true_cfg_str(cfg))
 
-        
+
+
+def new_save_cfg(cfg, path_cfg_file):
+    with open(path_cfg_file, 'w') as cfg_file:
+        json_dump(cfg,
+                  cfg_file,
+                  indent="    ")     
 
 if __name__ == "__main__":
     main()
