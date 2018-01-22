@@ -130,7 +130,11 @@ class Analyze_en():
                 i = self.en_spk[self.x_l:self.x_r].index(y)
                 break
         '''
-        i = np.where(self.en_spk[self.x_l:self.x_r] >= max_en_spk / 2)[0][0]
+        try:
+            i = np.where(self.en_spk[self.x_l:self.x_r] >= max_en_spk / 2)[0][0]
+        except IndexError:
+            i = self.x_l
+
         print("i_l = {}".format(self.x_l + i))
             
         k_l = self.en_spk[self.x_l + i] - self.en_spk[self.x_l + i - 1]
@@ -145,7 +149,11 @@ class Analyze_en():
         '''
 
         i_r_shift = 20
-        i = i + i_r_shift + np.where(self.en_spk[self.x_l + i + i_r_shift:self.x_r] <= max_en_spk / 2)[0][0]
+        try:
+            i = i + i_r_shift + np.where(self.en_spk[self.x_l + i + i_r_shift:self.x_r] <= max_en_spk / 2)[0][0]
+        except IndexError:
+            i = self.x_r
+
         print("i_r = {}".format(self.x_l + i))
         
         k_r = self.en_spk[self.x_l + i] - self.en_spk[self.x_l + i - 1]
@@ -771,8 +779,26 @@ class Create_UI(Gtk.Window):
         
     def click_btn_analyze_peak_t(self, btn):
         logging.info("Click btn analyze peak")
+        num_act_btns, btn_ind = self.count_act_check_btns_t()
+        
+        try:
+            self._clr_analyze_t()
+        except AttributeError:
+            logging.error("AttributeError in click_btn_analyze_exp_t()")
 
 
+        if num_act_btns == 1:
+            x_l = min(self.x_vlines_t)
+            x_r = max(self.x_vlines_t)
+            
+            analyze = Analyze_en(self.t_spk[btn_ind], x_l, x_r)
+            self.analyze_curve_peak_t = self.ax_t.fill_between(np.arange(x_l, x_r+1),
+                                                               self.t_spk[btn_ind][x_l:x_r+1],
+                                                               color="#42f4ee")
+            
+            self.canvas_t.draw()
+            
+        
     def click_btn_analyze_exp_t(self, btn):
         logging.info("Click btn analyze exp")
         num_act_btns, btn_ind = self.count_act_check_btns_t()
@@ -781,17 +807,16 @@ class Create_UI(Gtk.Window):
             self._clr_analyze_t()
         except AttributeError:
             logging.error("AttributeError in click_btn_analyze_exp_t()")
-            None
             
         if num_act_btns == 1:
             x_l = min(self.x_vlines_t)
             x_r = max(self.x_vlines_t)
 
             analyze = Analyze_exp_t(self.t_spk[btn_ind], x_l, x_r)
-            self.analyze_exp_t = self.ax_t.plot(np.arange(analyze.x_l, analyze.x_r),
-                                                analyze.curve_exp,
-                                                c="#ecff00",
-                                                lw=2)
+            self.analyze_curve_exp_t = self.ax_t.plot(np.arange(analyze.x_l, analyze.x_r),
+                                                      analyze.curve_exp,
+                                                      c="#ecff00",
+                                                      lw=2)
 
             self.canvas_t.draw()
             
@@ -801,7 +826,6 @@ class Create_UI(Gtk.Window):
             self._clr_analyze_t()
         except AttributeError:
             logging.error("AttributeError in click_btn_clr_analyze_t()")
-            None
 
         self.canvas_t.draw()
         
@@ -887,21 +911,31 @@ class Create_UI(Gtk.Window):
             self.analyze_mean_en.remove()
             self.analyze_fwhm_en.remove()
         except ValueError:
-            logging.error("ValueError in _clr_analyze_en()")
+            logging.error("ValueError in _clr_analyze_en")
 
 
     def _clr_analyze_t(self):
         logging.info("_clr_analyze_t()")
         try:
-            logging.info("before del {}".format(self.analyze_exp_t))
-            self.ax_t.lines.remove(self.analyze_exp_t[-1])
-            del self.analyze_exp_t[-1]
-            logging.info("after del {}".format(self.analyze_exp_t))
+            self.analyze_curve_peak_t.remove()
+            print("removed???")
+        except AttributeError:
+            logging.error("AttributeError in _clr_analyze_t")
+        except ValueError:
+            logging.error("AttributeError in _clr_analyze_t")
             
-            self.canvas_t.draw()
+        try:
+            logging.info("before del {}".format(self.analyze_curve_exp_t))
+            self.ax_t.lines.remove(self.analyze_curve_exp_t[-1])
+            del self.analyze_curve_exp_t[-1]
+            logging.info("after del {}".format(self.analyze_curve_exp_t))
         except ValueError:
             logging.error("ValueError in _clr_analyze_t()")
+        except IndexError:
+            logging.error("IndexError in _clr_analyze_t()")
 
+        self.canvas_t.draw()
+            
             
     def _clr_vlines_en(self):
         self.vlines_en[0].remove()
