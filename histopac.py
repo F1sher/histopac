@@ -359,6 +359,37 @@ class Calc_view_t(Calc_view_en):
     def __init__(self):
         Calc_view_en.__init__(self)
 
+        self._exp_eq_line = 0
+        self._exp_A_line = 1
+        self._exp_tau_line = 2
+        self._exp_B_line = 3
+
+    def set_analyze_exp(self, analyze):
+        super().clr_buf()
+        self.set_exp_eq()
+        self.set_exp_A(analyze.A)
+        self.set_exp_tau(analyze.tau)
+        
+
+    def set_exp_eq(self):
+        txt = u"y(t) = A * exp(-t / \u03c4) + B(t)\n"
+        super()._insert_txt_at_line(txt, self._exp_eq_line)
+
+        #super()._apply_tag_at_line_offset("bold", self._exp_eq_line, len(txt)-1)
+
+
+    def set_exp_A(self, A):
+        txt = "A = {:.0e}\n".format(A)
+        super()._insert_txt_at_line(txt, self._exp_A_line)
+
+    def set_exp_tau(self, tau):
+        txt = u"\u03c4 = {:.2f}\n".format(tau)
+        super()._insert_txt_at_line(txt, self._exp_tau_line)
+
+    def set_B_line(self, B):
+        txt = "B = {:.1f}".format(B)
+        super()._insert_txt_at_line(txt, self._exp_B_line)
+
         
 
 class Analyze_exp_t():
@@ -834,6 +865,8 @@ class Create_UI(Gtk.Window):
                                                       lw=2)
 
             self.canvas_t.draw()
+
+            self.calc_view_t.set_analyze_exp(analyze)
             
             
     def click_btn_clr_analyze_t(self, btn):
