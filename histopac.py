@@ -56,7 +56,7 @@ def main(dir_name):
                         datefmt="%Y/%m/%d %H-%M-%S",
                         level=logging.INFO)
     
-    ui = Create_UI()
+    ui = Create_UI(dir_name)
     
     en_spk, t_spk = get_histos_from_folder(dir_name)
 
@@ -359,10 +359,10 @@ class Calc_view_t(Calc_view_en):
     def __init__(self):
         Calc_view_en.__init__(self)
 
-        self._exp_eq_line = 0
-        self._exp_A_line = 1
-        self._exp_tau_line = 2
-        self._exp_B_line = 3
+        self._exp_eq_line = 1
+        self._exp_A_line = 2
+        self._exp_tau_line = 3
+        self._exp_B_line = 4
 
     def set_analyze_exp(self, analyze):
         super().clr_buf()
@@ -372,19 +372,28 @@ class Calc_view_t(Calc_view_en):
         
 
     def set_exp_eq(self):
-        txt = u"y(t) = A * exp(-t / \u03c4) + B(t)\n"
+        txt = u"y(t) = A*exp(-t/\u03c4) + B(t)\n"
         super()._insert_txt_at_line(txt, self._exp_eq_line)
 
-        #super()._apply_tag_at_line_offset("bold", self._exp_eq_line, len(txt)-1)
+        super()._apply_tag_at_line_offset("bold", self._exp_eq_line, len(txt) - 1)
+        #super()._apply_tag_at_line_offset("large_fontsize", self._exp_eq_line, len(txt) - 1)
 
 
     def set_exp_A(self, A):
         txt = "A = {:.0e}\n".format(A)
         super()._insert_txt_at_line(txt, self._exp_A_line)
 
+        self._apply_tag_at_line_offset("bold", self._exp_A_line, len("A"))
+        super()._apply_tag_at_line_offset("large_fontsize", self._exp_A_line, len(txt) - 1)
+        
+
     def set_exp_tau(self, tau):
         txt = u"\u03c4 = {:.2f}\n".format(tau)
         super()._insert_txt_at_line(txt, self._exp_tau_line)
+
+        self._apply_tag_at_line_offset("bold", self._exp_tau_line, len(u"\u03c4"))
+        super()._apply_tag_at_line_offset("large_fontsize", self._exp_tau_line, len(txt) - 1)
+        
 
     def set_B_line(self, B):
         txt = "B = {:.1f}".format(B)
@@ -442,8 +451,9 @@ class Analyze_exp_t():
     
         
 class Create_UI(Gtk.Window):
-    def __init__(self):
-        Gtk.Window.__init__(self, title="histopac")
+    def __init__(self, dir_name="-"):
+        Gtk.Window.__init__(self)
+        self.set_title(dir_name.split("/")[-1] + " - histopac")
         self.connect("delete-event", self.main_quit)
 
         box_main = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
