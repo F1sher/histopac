@@ -75,7 +75,7 @@ def main(dir_name):
     new_save_cfg(cfg, "./testspk/cfg__.json")
 
     
-class Analyze_en():
+class Analyze_peak():
     def __init__(self, en_spk, x_l, x_r):
         self.en_spk = np.array(en_spk)
         self.x_l = x_l
@@ -221,6 +221,7 @@ class Calibr_en():
             f.write(data)
         
 
+            
 class Dialog_calibr_en(Gtk.Dialog):
     def __init__(self, parent, calibr_en):
         Gtk.Dialog.__init__(self, "Energy calibration", parent, 0,
@@ -352,6 +353,13 @@ class Calc_view_en():
             end_iter = self.buf.get_iter_at_line_offset(start_line - 1, offset)
         self.buf.apply_tag_by_name(name_tag, start_iter, end_iter)
 
+
+
+class Calc_view_t(Calc_view_en):
+    def __init__(self):
+        Calc_view_en.__init__(self)
+
+        
 
 class Analyze_exp_t():
     def __init__(self, t_spk, x_l, x_r):
@@ -525,6 +533,11 @@ class Create_UI(Gtk.Window):
             
         vbox_t_spk_chooser.pack_start(grid_check_btn_t, False, False, 0)
 
+        vbox_calc_t = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
+        self.calc_view_t = Calc_view_t()
+        vbox_calc_t.pack_start(self.calc_view_t.txtview, False, False, 0)
+        grid_t.attach(vbox_calc_t, 0, 1, 1, 1)
+        
         grid_btns_cntrl = Gtk.Grid()
         btn_analyze_peak_t = Gtk.Button("Peak Analyze")
         btn_analyze_peak_t.connect("clicked", self.click_btn_analyze_peak_t)
@@ -537,7 +550,7 @@ class Create_UI(Gtk.Window):
         grid_btns_cntrl.attach(btn_analyze_exp_t, 1, 0, 1, 1)
         grid_btns_cntrl.attach(btn_clr_analyze_t, 0, 1, 1, 1)
 
-        grid_t.attach(grid_btns_cntrl, 0, 1, 1, 1)
+        grid_t.attach(grid_btns_cntrl, 0, 2, 1, 1)
         
         hbox_t.pack_start(vbox_mp_t, True, True, 0)
         hbox_t.pack_start(grid_t, False, False, 5)
@@ -645,7 +658,7 @@ class Create_UI(Gtk.Window):
             x_l = min(self.x_vlines_en)
             x_r = max(self.x_vlines_en)
 
-            analyze = Analyze_en(self.en_spk[btn_ind], x_l, x_r)
+            analyze = Analyze_peak(self.en_spk[btn_ind], x_l, x_r)
             self.analyze_curve_en = self.ax_en.fill_between(range(x_l, x_r+1),
                                                             self.en_spk[btn_ind][x_l:x_r+1],
                                                             color="#42f4ee")
@@ -791,12 +804,14 @@ class Create_UI(Gtk.Window):
             x_l = min(self.x_vlines_t)
             x_r = max(self.x_vlines_t)
             
-            analyze = Analyze_en(self.t_spk[btn_ind], x_l, x_r)
+            analyze = Analyze_peak(self.t_spk[btn_ind], x_l, x_r)
             self.analyze_curve_peak_t = self.ax_t.fill_between(np.arange(x_l, x_r+1),
                                                                self.t_spk[btn_ind][x_l:x_r+1],
-                                                               color="#42f4ee")
+                                                               color="#ecff00")
             
             self.canvas_t.draw()
+
+            self.calc_view_t.set_analyze(analyze)
             
         
     def click_btn_analyze_exp_t(self, btn):
