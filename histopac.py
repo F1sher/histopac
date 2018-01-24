@@ -2,9 +2,7 @@
 
 import click
 import logging
-from json import loads as json_loads
-from json import dumps as json_dumps
-from json import dump as json_dump
+import json
 
 import gi
 gi.require_version('Gtk', '3.0')
@@ -17,7 +15,7 @@ from matplotlib.backends.backend_gtk3 import NavigationToolbar2GTK3 as Navigatio
 import numpy as np
 from struct import unpack
 
-import gui_name
+import gui_params
 
 
 det_num = 4
@@ -31,12 +29,7 @@ histo_t_fnames = ["TIME1.SPK", "TIME2.SPK", "TIME3.SPK", "TIME4.SPK",
                   "TIME5.SPK", "TIME6.SPK", "TIME7.SPK", "TIME8.SPK",
                   "TIME9.SPK", "TIME10.SPK", "TIME11.SPK", "TIME12.SPK"]
 
-det_colors = ["r", "g", "b", "m"]
-t_spk_colors = ["#ff0000", "#ff6565", "#008000", "#3cbc3c",
-                "#0000ff", "#6565ff", "#bf00bf", "#cd6fcc",
-                "#000000", "#656565", "#00bfbf", "#63ddde"]
-
-cfg_fname = "./testspk/cfg_.json"
+ini_fname = "./ini.json"
 
 
 
@@ -63,8 +56,9 @@ def main(dir_name):
     ui.set_histos(en_spk, t_spk)
     ui.plot_all_histos()
 
-    cfg = parse_cfg("./testspk/cfg.json")
-    save_cfg(cfg, "./testspk/cfg_.json")
+    ini = parse_ini(ini_fname)
+    cfg = parse_cfg(ini["cfg_fname"])
+    #save_cfg(cfg, "./testspk/cfg_.json")
     ui.set_cfg(cfg)
 
     ui.hide_all_spk_t()
@@ -192,7 +186,7 @@ class Calibr_en():
     def set_ch_en_from_file(self, fname):
         with open(fname, "r") as f:
             data = f.read(2048)
-            vals = json_loads(data)
+            vals = json.load(data)
 
             for i in range(2):
                 self.ch[i] = int(vals["channels"][i])
@@ -494,12 +488,12 @@ class Create_UI(Gtk.Window):
         vbox_en_spk_chooser = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
         grid_en.attach(vbox_en_spk_chooser, 0, 0, 1, 1)
 
-        vbox_en_spk_chooser.pack_start(Gtk.Label("EN spk"), False, False, 0)
+        vbox_en_spk_chooser.pack_start(Gtk.Label("ENergy spectra"), False, False, 0)
         self.check_btn_en = []
         for i in range(0, det_num):
-            self.check_btn_en.append(Gtk.CheckButton.new_with_label(gui_name.en[i]))
+            self.check_btn_en.append(Gtk.CheckButton.new_with_label(gui_params.en[i]))
             self.check_btn_en[-1].set_active(True)
-            self.check_btn_en[-1].connect("toggled", self.toggle_check_btn_en, gui_name.en[i])
+            self.check_btn_en[-1].connect("toggled", self.toggle_check_btn_en, gui_params.en[i])
             vbox_en_spk_chooser.pack_start(self.check_btn_en[-1], False, False, 0)
 
         vbox_calc_en = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
@@ -562,14 +556,14 @@ class Create_UI(Gtk.Window):
         vbox_t_spk_chooser = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
         grid_t.attach(vbox_t_spk_chooser, 0, 0, 1, 1)
 
-        vbox_t_spk_chooser.pack_start(Gtk.Label("T spk"), False, False, 0)
+        vbox_t_spk_chooser.pack_start(Gtk.Label("Time spectra"), False, False, 0)
         self.check_btn_t = []
         grid_check_btn_t = Gtk.Grid()
         grid_check_btn_t.set_row_spacing(5)
         for i in range(t_spk_num):
-            self.check_btn_t.append(Gtk.CheckButton.new_with_label(gui_name.t[i]))
+            self.check_btn_t.append(Gtk.CheckButton.new_with_label(gui_params.t[i]))
             self.check_btn_t[-1].set_active(True)
-            self.check_btn_t[-1].connect("toggled", self.toggle_check_btn_t, gui_name.t[i])
+            self.check_btn_t[-1].connect("toggled", self.toggle_check_btn_t, gui_params.t[i])
             grid_check_btn_t.attach(self.check_btn_t[-1], i % 2, i / 2, 1, 1)
             
         vbox_t_spk_chooser.pack_start(grid_check_btn_t, False, False, 0)
@@ -658,8 +652,8 @@ class Create_UI(Gtk.Window):
         
                                    
     def toggle_check_btn_en(self, btn, name):        
-        if name in gui_name.en:
-            ind = gui_name.en.index(name)
+        if name in gui_params.en:
+            ind = gui_params.en.index(name)
             btn = self.check_btn_en[ind]
             if btn.get_active():
                 self.plot_histo_name(name)
@@ -897,20 +891,20 @@ class Create_UI(Gtk.Window):
 
         
     def plot_histo_name(self, name):
-        if name in gui_name.en:
-            ind = gui_name.en.index(name)
+        if name in gui_params.en:
+            ind = gui_params.en.index(name)
             self.en_lines[ind].set_ydata(self.en_spk[ind])
             self.canvas_en.draw()
-        elif name in gui_name.t:
-            ind = gui_name.t.index(name)
+        elif name in gui_params.t:
+            ind = gui_params.t.index(name)
             self.t_lines[ind].set_ydata(self.t_spk[ind])
             self.canvas_t.draw()
             
     def clr_histo_name(self, name):
         y_zeros = [0] * histo_size
         
-        for n in gui_name.en:
-            ind = gui_name.en.index(n)
+        for n in gui_params.en:
+            ind = gui_params.en.index(n)
             btn = self.check_btn_en[ind]
 
             if btn.get_active() is False:
@@ -918,8 +912,8 @@ class Create_UI(Gtk.Window):
 
         self.canvas_en.draw()
 
-        for n in gui_name.t:
-            ind = gui_name.t.index(n)
+        for n in gui_params.t:
+            ind = gui_params.t.index(n)
             btn = self.check_btn_t[ind]
 
             if btn.get_active() is False:
@@ -935,13 +929,13 @@ class Create_UI(Gtk.Window):
         
         for i in range(det_num):
             self.en_lines.append( self.ax_en.plot(x, self.en_spk[i], marker="o",
-                                                  ms=3, mew=0, c=det_colors[i], lw=1.0)[0] )
+                                                  ms=3, mew=0, c=gui_params.det_colors[i], lw=1.0)[0] )
         self.set_lim_vals_en(0)     
         self.canvas_en.draw()
 
         for i in range(t_spk_num):
             self.t_lines.append( self.ax_t.plot(x, self.t_spk[i], marker="o",
-                                                ms=5, mew=0, c=t_spk_colors[i], lw=0)[0] )
+                                                ms=5, mew=0, c=gui_params.t_spk_colors[i], lw=0)[0] )
         self.set_lim_vals_t(0)
         
         self.canvas_t.draw()
@@ -1012,8 +1006,8 @@ class Create_UI(Gtk.Window):
     
 
     def toggle_check_btn_t(self, btn, name):
-        if name in gui_name.t:
-            ind = gui_name.t.index(name)
+        if name in gui_params.t:
+            ind = gui_params.t.index(name)
             btn = self.check_btn_t[ind]
             if btn.get_active():
                 self.plot_histo_name(name)
@@ -1049,13 +1043,23 @@ def get_histos_from_folder(foldername = "./testspk/"):
 
 
 
+def parse_ini(path_ini_file):
+    ini = {}
+
+    with open(path_ini_file, "r") as fp_ini:
+        ini = json.load(fp_ini)
+
+    return ini
+
+
+
 def parse_cfg(path_cfg_file):
     cfg = {}
     
     with open(path_cfg_file, 'r') as cfg_file:
         #if the size of cfg.json will be larger than 2048 bytes, please change it
         config = cfg_file.read(2048)
-        config_vals = json_loads(config)
+        config_vals = json.loads(config)
         
         cfg["porog"] = config_vals["porog for detectors"]#[90, 90, 90, 90]
         cfg["delay"] = config_vals["time of coincidence [ch]"]#100
@@ -1093,7 +1097,7 @@ def save_cfg(cfg, path_cfg_file):
 
 def new_save_cfg(cfg, path_cfg_file):
     with open(path_cfg_file, 'w') as cfg_file:
-        json_dump(cfg,
+        json.dump(cfg,
                   cfg_file,
                   indent="    ")     
 
