@@ -186,7 +186,7 @@ class Calibr_en():
     def set_ch_en_from_file(self, fname):
         with open(fname, "r") as f:
             data = f.read(2048)
-            vals = json.load(data)
+            vals = json.loads(data)
 
             for i in range(2):
                 self.ch[i] = int(vals["channels"][i])
