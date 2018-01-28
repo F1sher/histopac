@@ -13,6 +13,8 @@ from matplotlib.backends.backend_gtk3agg import FigureCanvasGTK3Agg as FigureCan
 from matplotlib.backends.backend_gtk3 import NavigationToolbar2GTK3 as NavigationToolbar
 
 import numpy as np
+
+from os import path
 from struct import unpack
 
 import gui_params
@@ -446,7 +448,7 @@ class Analyze_exp_t():
 class Create_UI(Gtk.Window):
     def __init__(self, dir_name="-"):
         Gtk.Window.__init__(self)
-        self.set_title(dir_name.split("/")[-1] + " - histopac")
+        self.set_title(path.basename(path.abspath(dir_name)) + " - histopac")
         self.connect("delete-event", self.main_quit)
 
         box_main = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
