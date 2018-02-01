@@ -13,6 +13,8 @@ from matplotlib.backends.backend_gtk3agg import FigureCanvasGTK3Agg as FigureCan
 from matplotlib.backends.backend_gtk3 import NavigationToolbar2GTK3 as NavigationToolbar
 
 import numpy as np
+
+from os import path
 from struct import unpack
 
 import gui_params
@@ -30,7 +32,7 @@ histo_t_fnames = ["TIME1.SPK", "TIME2.SPK", "TIME3.SPK", "TIME4.SPK",
                   "TIME9.SPK", "TIME10.SPK", "TIME11.SPK", "TIME12.SPK"]
 
 ini_fname = "./ini.json"
-
+ini = None
 
 
 @click.command()
@@ -48,6 +50,10 @@ def main(dir_name):
     logging.basicConfig(format="{File %(filename)s, line %(lineno)d} %(levelname)s:%(asctime)s:%(message)s",
                         datefmt="%Y/%m/%d %H-%M-%S",
                         level=logging.INFO)
+
+    global ini
+    ini = parse_ini(ini_fname)
+    cfg = parse_cfg(ini["cfg_fname"])
     
     ui = Create_UI(dir_name)
     
@@ -55,18 +61,13 @@ def main(dir_name):
 
     ui.set_histos(en_spk, t_spk)
     ui.plot_all_histos()
-
-    ini = parse_ini(ini_fname)
-    cfg = parse_cfg(ini["cfg_fname"])
-    #save_cfg(cfg, "./testspk/cfg_.json")
+    
     ui.set_cfg(cfg)
 
     ui.hide_all_spk_t()
     
     ui.show_all()
     Gtk.main()
-
-    new_save_cfg(cfg, "./testspk/cfg__.json")
 
     
 class Analyze_peak():
@@ -170,7 +171,7 @@ class Calibr_en():
         self.ch = [-1, -1]
         self.en = [-1.0, -1.0]
 
-        self.set_ch_en_from_file("./testspk/calibr_en.json")
+        self.set_ch_en_from_file(ini["calibr_en_fname"])
 
         self.calc_k_b()
 
@@ -447,7 +448,7 @@ class Analyze_exp_t():
 class Create_UI(Gtk.Window):
     def __init__(self, dir_name="-"):
         Gtk.Window.__init__(self)
-        self.set_title(dir_name.split("/")[-1] + " - histopac")
+        self.set_title(path.basename(path.abspath(dir_name)) + " - histopac")
         self.connect("delete-event", self.main_quit)
 
         box_main = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
@@ -488,13 +489,30 @@ class Create_UI(Gtk.Window):
         vbox_en_spk_chooser = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
         grid_en.attach(vbox_en_spk_chooser, 0, 0, 1, 1)
 
-        vbox_en_spk_chooser.pack_start(Gtk.Label("ENergy spectra"), False, False, 0)
+        lbl = Gtk.Label()
+        lbl.set_markup("<span font-weight='bold'>ENergy spectra</span>")
+        vbox_en_spk_chooser.pack_start(lbl, False, False, 0)
+        
         self.check_btn_en = []
         for i in range(0, det_num):
-            self.check_btn_en.append(Gtk.CheckButton.new_with_label(gui_params.en[i]))
+            hbox = Gtk.Box()
+            check_btn = Gtk.CheckButton()
+            hbox.pack_start(check_btn, False, False, 0)
+            lbl = Gtk.Label()
+            lbl.set_markup("<span fgcolor='{:s}'>{:s}</span>".
+                           format(gui_params.det_colors[i], gui_params.en[i]))
+            hbox.pack_start(lbl, False, False, 0)
+
+            self.check_btn_en.append(check_btn)
+            self.check_btn_en[-1].set_active(True)
+            self.check_btn_en[-1].connect("toggled", self.toggle_check_btn_en, gui_params.en[i])
+            vbox_en_spk_chooser.pack_start(hbox, False, False, 0)
+            '''
+            self.check_btn_en.append(Gtk.CheckButton.new_with_label())#gui_params.en[i]))
             self.check_btn_en[-1].set_active(True)
             self.check_btn_en[-1].connect("toggled", self.toggle_check_btn_en, gui_params.en[i])
             vbox_en_spk_chooser.pack_start(self.check_btn_en[-1], False, False, 0)
+            '''
 
         vbox_calc_en = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
         self.calc_view_en = Calc_view_en()
@@ -556,15 +574,34 @@ class Create_UI(Gtk.Window):
         vbox_t_spk_chooser = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
         grid_t.attach(vbox_t_spk_chooser, 0, 0, 1, 1)
 
-        vbox_t_spk_chooser.pack_start(Gtk.Label("Time spectra"), False, False, 0)
+        lbl = Gtk.Label()
+        lbl.set_markup("<span font-weight='bold'>Time spectra</span>")
+        vbox_t_spk_chooser.pack_start(lbl, False, False, 0)
+
         self.check_btn_t = []
         grid_check_btn_t = Gtk.Grid()
         grid_check_btn_t.set_row_spacing(5)
         for i in range(t_spk_num):
+            hbox = Gtk.Box()
+            check_btn = Gtk.CheckButton()
+            hbox.pack_start(check_btn, False, False, 0)
+            lbl = Gtk.Label()
+            lbl.set_markup("<span fgcolor='{:s}'>{:s}</span>".
+                           format(gui_params.t_spk_colors[i], gui_params.t[i]))
+            hbox.pack_start(lbl, False, False, 0)
+
+            self.check_btn_t.append(check_btn)
+            self.check_btn_t[-1].set_active(True)
+            self.check_btn_t[-1].set_active(True)
+            self.check_btn_t[-1].connect("toggled", self.toggle_check_btn_t, gui_params.t[i])
+            grid_check_btn_t.attach(hbox, i % 2, i / 2, 1, 1)
+            
+            """
             self.check_btn_t.append(Gtk.CheckButton.new_with_label(gui_params.t[i]))
             self.check_btn_t[-1].set_active(True)
             self.check_btn_t[-1].connect("toggled", self.toggle_check_btn_t, gui_params.t[i])
             grid_check_btn_t.attach(self.check_btn_t[-1], i % 2, i / 2, 1, 1)
+            """
             
         vbox_t_spk_chooser.pack_start(grid_check_btn_t, False, False, 0)
 

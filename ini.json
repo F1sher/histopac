@@ -1,4 +1,5 @@
 {
     "cfg_fname": "./testspk/cfg_.json",
-    "config_fname": "./testspk/config.json"
+    "config_fname": "./testspk/config.json",
+    "calibr_en_fname": "./testspk/calibr_en.json"
 }
