@@ -168,7 +168,7 @@ class Analyze_peak():
 
 class Calibr_en():
     def __init__(self):
-        self.ch = [[-1, -1] for i in range(det_num)]
+        self.ch = [[-1.0, -1.0] for i in range(det_num)]
         self.en = [[-1.0, -1.0] for i in range(det_num)]
 
         self.set_ch_en_from_file(ini["calibr_en_path"])
@@ -209,6 +209,10 @@ class Calibr_en():
 
     def save_file_ch_en(self, fname):
         with open(fname, "w+") as f:
+            d = {"channels": self.ch,
+                 "energies": self.en}
+            json.dump(d, f)
+            '''
             data = "{\n"
             data += "\t\"channels\": ["
             data +=  str(self.ch[0])
@@ -222,7 +226,7 @@ class Calibr_en():
             data += "]\n"
             data += "}"
             f.write(data)
-        
+            '''
 
             
 class Dialog_calibr_en(Gtk.Dialog):
@@ -240,8 +244,8 @@ class Dialog_calibr_en(Gtk.Dialog):
         self.entry_en = [Gtk.Entry() for i in range(det_num)]
 
         for i in range(det_num):
-            self.entry_ch[i].set_text(str(calibr_en.ch[i]))
-            self.entry_en[i].set_text(str(calibr_en.en[i]))
+            self.entry_ch[i].set_text(str(calibr_en.ch[i][0]) + ', ' + str(calibr_en.ch[i][1]))
+            self.entry_en[i].set_text(str(calibr_en.en[i][0]) + ', ' + str(calibr_en.en[i][1]))
             
         self.grid = Gtk.Grid()
 
@@ -660,16 +664,16 @@ class Create_UI(Gtk.Window):
     def motion_mpl_en(self, event):
         txt = ""
         num_act_btns, btn_ind = self.count_act_check_btns_en()
-                
+
         if num_act_btns == 1:
             try:
                 x = int(float(event.xdata))
                 y = self.en_spk[btn_ind][x]
-                txt = "{:d} ({:.0f}) {:d}".format(x, self.calibr_en.k * x + self.calibr_en.b, y)
+                txt = "{:d} ({:.0f}) {:d}".format(x, self.calibr_en.ch_to_keV(btn_ind, x), y)
             except TypeError:
                 txt = "Out of range"
 
-        self.entry_ptr_en.set_text(txt)
+            self.entry_ptr_en.set_text(txt)
 
 
     def press_btn_mpl_en(self, event):
@@ -714,8 +718,14 @@ class Create_UI(Gtk.Window):
 
         if response == Gtk.ResponseType.OK:
             #get data from entry_en and entry_ch
-            ch = [int(dialog.entry_ch[0].get_text()), int(dialog.entry_ch[1].get_text())]
-            en = [float(dialog.entry_en[0].get_text()), float(dialog.entry_en[1].get_text())]
+            ch = [[-1.0, -1.0] for i in range(det_num)]
+            en = [[-1.0, -1.0] for i in range(det_num)]
+            for i in range(det_num):
+                for j in range(2):
+                    ch[i][j] = float(dialog.entry_ch[i].get_text().split(', ')[j])
+                    en[i][j] = float(dialog.entry_en[i].get_text().split(', ')[j])
+
+            logging.info("\nch = {}\nen = {}".format(ch, en))        
             #save data in obj and file
             self.calibr_en.set_ch_en_from_input(ch, en)
             self.calibr_en.save_file_ch_en(ini["calibr_en_path"])
@@ -750,13 +760,13 @@ class Create_UI(Gtk.Window):
             self.analyze_fwhm_en = self.ax_en.hlines(analyze.fwhm_y,
                                                      x_l + analyze.fwhm_ch_l,
                                                      x_l + analyze.fwhm_ch_r)
-            print("analyze_fwhm = ({:.0f} {:.1f} {:.1f})".format(analyze.fwhm_y,
-                                                                 x_l + analyze.fwhm_ch_l,
-                                                                 x_l + analyze.fwhm_ch_r))
             
             self.canvas_en.draw()
 
-            self.calc_view_en.set_analyze_peak(analyze)
+            def ch_to_phys(ch):
+                return self.calibr_en.ch_to_keV(btn_ind, ch)
+
+            self.calc_view_en.set_analyze_peak(analyze, ch_to_phys)
 
 
     def click_btn_clr_analyze_en(self, btn):
@@ -780,7 +790,7 @@ class Create_UI(Gtk.Window):
             self.cfg["en_range"][btn_ind][0] = self.x_vlines_en[0]
             self.cfg["en_range"][btn_ind][1] = self.x_vlines_en[1]
             #save cfg to file
-            save_cfg(self.cfg, cfg_fname)
+            save_cfg(self.cfg, ini["cfg_path"])
 
             self._clr_vlines_en()
             self.canvas_en.draw()
@@ -881,7 +891,6 @@ class Create_UI(Gtk.Window):
         except AttributeError:
             logging.error("AttributeError in click_btn_analyze_exp_t()")
 
-
         if num_act_btns == 1:
             x_l = min(self.x_vlines_t)
             x_r = max(self.x_vlines_t)
@@ -893,7 +902,13 @@ class Create_UI(Gtk.Window):
             
             self.canvas_t.draw()
 
-            self.calc_view_t.set_analyze_peak(analyze)
+            def ch_to_phys(ch):
+                try:
+                    return self.ch_to_ns(btn_ind)
+                except AttributeError:
+                    return -1
+                
+            self.calc_view_t.set_analyze_peak(analyze, ch_to_phys)
             
         
     def click_btn_analyze_exp_t(self, btn):
