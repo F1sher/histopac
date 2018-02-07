@@ -53,7 +53,7 @@ def main(dir_name):
 
     global ini
     ini = parse_ini(ini_fname)
-    cfg = parse_cfg(ini["cfg_fname"])
+    cfg = parse_cfg(ini["cfg_path"])
     
     ui = Create_UI(dir_name)
     
@@ -168,32 +168,40 @@ class Analyze_peak():
 
 class Calibr_en():
     def __init__(self):
-        self.ch = [-1, -1]
-        self.en = [-1.0, -1.0]
+        self.ch = [[-1, -1] for i in range(det_num)]
+        self.en = [[-1.0, -1.0] for i in range(det_num)]
 
-        self.set_ch_en_from_file(ini["calibr_en_fname"])
+        self.set_ch_en_from_file(ini["calibr_en_path"])
 
+        self.k = det_num * [0]
+        self.b = det_num * [0]
         self.calc_k_b()
 
         
     def calc_k_b(self):
-        try:
-            self.k = (self.en[0] - self.en[1]) / (self.ch[0] - self.ch[1])
-        except ZeroDivisionError:
-            self.k = 1.0
-        self.b = self.en[0] - self.k * self.ch[0]
+        for i in range(det_num):
+            try:
+                self.k[i] = (self.en[i][0] - self.en[i][1]) / (self.ch[i][0] - self.ch[i][1])
+            except ZeroDivisionError:
+                self.k[i] = 1.0
+            self.b[i] = self.en[i][0] - self.k[i] * self.ch[i][0]
 
+
+    def ch_to_keV(self, det_i, ch):
+        return self.k[det_i] * ch + self.b[det_i]
+        
         
     def set_ch_en_from_file(self, fname):
         with open(fname, "r") as f:
             data = f.read(2048)
             vals = json.loads(data)
+            
+            for i in range(det_num):
+                for j in range(2):
+                    self.ch[i][j] = int(vals["channels"][i][j])
+                    self.en[i][j] = float(vals["energies"][i][j])
 
-            for i in range(2):
-                self.ch[i] = int(vals["channels"][i])
-                self.en[i] = float(vals["energies"][i])
-
-
+                
     def set_ch_en_from_input(self, ch, en):
         self.ch = ch
         self.en = en
@@ -228,21 +236,21 @@ class Dialog_calibr_en(Gtk.Dialog):
         label_ch = Gtk.Label("Channels:")
         label_en = Gtk.Label("Energies:")
         
-        self.entry_ch = [Gtk.Entry(), Gtk.Entry()]
-        self.entry_en = [Gtk.Entry(), Gtk.Entry()]
+        self.entry_ch = [Gtk.Entry() for i in range(det_num)]
+        self.entry_en = [Gtk.Entry() for i in range(det_num)]
 
-        for i in range(2):
+        for i in range(det_num):
             self.entry_ch[i].set_text(str(calibr_en.ch[i]))
             self.entry_en[i].set_text(str(calibr_en.en[i]))
             
         self.grid = Gtk.Grid()
 
-        self.grid.attach(label_ch, 0, 0, 1, 1)
-        self.grid.attach(label_en, 1, 0, 1, 1)
-        self.grid.attach(self.entry_ch[0], 0, 1, 1, 1)
-        self.grid.attach(self.entry_en[0], 1, 1, 1, 1)
-        self.grid.attach(self.entry_ch[1], 0, 2, 1, 1)
-        self.grid.attach(self.entry_en[1], 1, 2, 1, 1)
+        self.grid.attach(label_ch, 1, 0, 1, 1)
+        self.grid.attach(label_en, 2, 0, 1, 1)
+        for i in range(det_num):
+            self.grid.attach(Gtk.Label("D{}".format(i+1)), 0, i + 1, 1, 1)
+            self.grid.attach(self.entry_ch[i], 1, i + 1, 1, 1)
+            self.grid.attach(self.entry_en[i], 2, i + 1, 1, 1)
         
         box = self.get_content_area()
         box.add(self.grid)
@@ -254,10 +262,11 @@ class Dialog_calibr_en(Gtk.Dialog):
 class Calc_view_en():
     def __init__(self):
         self.txtview = Gtk.TextView()
+        self.txtview.set_size_request(-1, 150) 
         self.buf = self.txtview.get_buffer()
 
         self.bold_tag = self.buf.create_tag("bold", weight=Pango.Weight.BOLD) 
-        self.large_size_tag = self.buf.create_tag("large_fontsize", size=14 * Pango.SCALE)
+        self.large_size_tag = self.buf.create_tag("large_fontsize", size=14*Pango.SCALE)
 
         self._title_line = 0
         self._integral_line = 1
@@ -273,11 +282,11 @@ class Calc_view_en():
         self.buf.set_text(text)
 
 
-    def set_analyze(self, analyze):
+    def set_analyze_peak(self, analyze, ch_to_phys):
         self.clr_buf()
         self.set_integral(analyze.integral)
         self.set_area(analyze.area)
-        self.set_mean(analyze.mean)
+        self.set_mean(analyze.mean, ch_to_phys)
         self.set_fwhm(analyze.fwhm)
         self.set_resol(analyze.resol)
 
@@ -311,11 +320,11 @@ class Calc_view_en():
         self._apply_tag_at_line_offset("large_fontsize", self._area_line, len(txt) - 1)
         
         
-    def set_mean(self, mean_val):
-        txt = "Mean: {:.1f}\n".format(mean_val)
+    def set_mean(self, mean_val, ch_to_phys):
+        txt = "Position: {:.1f} ({:.1f})\n".format(mean_val, ch_to_phys(mean_val))
         self._insert_txt_at_line(txt, self._mean_line)
 
-        self._apply_tag_at_line_offset("bold", self._mean_line, len("Mean"))
+        self._apply_tag_at_line_offset("bold", self._mean_line, len("Position"))
         self._apply_tag_at_line_offset("large_fontsize", self._mean_line, len(txt) - 1)
 
 
@@ -328,7 +337,7 @@ class Calc_view_en():
 
 
     def set_resol(self, resol_val):
-        txt = "Resolution: {:.2f}\n".format(resol_val)
+        txt = "Resolution: {:.1f} %\n".format(100.0*resol_val)
         self._insert_txt_at_line(txt, self._resol_line)
 
         self._apply_tag_at_line_offset("bold", self._resol_line, len("Resolution"))
@@ -447,6 +456,9 @@ class Analyze_exp_t():
         
 class Create_UI(Gtk.Window):
     def __init__(self, dir_name="-"):
+        ###Calibration energy spectra
+        self.calibr_en = Calibr_en()
+        
         Gtk.Window.__init__(self)
         self.set_title(path.basename(path.abspath(dir_name)) + " - histopac")
         self.connect("delete-event", self.main_quit)
@@ -479,8 +491,6 @@ class Create_UI(Gtk.Window):
         vbox_mpl_en = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
         vbox_mpl_en.pack_start(self.canvas_en, True, True, 0)
         vbox_mpl_en.pack_start(nav_toolbar_en, False, False, 0)
-        
-        self.calibr_en = Calibr_en()
         
         grid_en = Gtk.Grid()
         grid_en.set_row_spacing(10)
@@ -706,9 +716,9 @@ class Create_UI(Gtk.Window):
             #get data from entry_en and entry_ch
             ch = [int(dialog.entry_ch[0].get_text()), int(dialog.entry_ch[1].get_text())]
             en = [float(dialog.entry_en[0].get_text()), float(dialog.entry_en[1].get_text())]
-            #save data to file
+            #save data in obj and file
             self.calibr_en.set_ch_en_from_input(ch, en)
-            self.calibr_en.save_file_ch_en("./testspk/calibr_en.json")
+            self.calibr_en.save_file_ch_en(ini["calibr_en_path"])
             #calc k, b
             self.calibr_en.calc_k_b()
         elif response == Gtk.ResponseType.CANCEL:
@@ -746,7 +756,7 @@ class Create_UI(Gtk.Window):
             
             self.canvas_en.draw()
 
-            self.calc_view_en.set_analyze(analyze)
+            self.calc_view_en.set_analyze_peak(analyze)
 
 
     def click_btn_clr_analyze_en(self, btn):
@@ -883,7 +893,7 @@ class Create_UI(Gtk.Window):
             
             self.canvas_t.draw()
 
-            self.calc_view_t.set_analyze(analyze)
+            self.calc_view_t.set_analyze_peak(analyze)
             
         
     def click_btn_analyze_exp_t(self, btn):
