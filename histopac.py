@@ -690,6 +690,7 @@ class Create_UI(Gtk.Window):
                 except AttributeError:
                     self.vlines_en = []
                     self.x_vlines_en = []
+                    self.txt_vlines_en = []
                      
                 x = int(round(event.xdata))
                 y = self.en_spk[btn_ind][x]
@@ -699,6 +700,12 @@ class Create_UI(Gtk.Window):
                                                         ymin = 0,
                                                         ymax = y,
                                                         color = "black"))
+                #text near vlines
+                self.txt_vlines_en.append(self.ax_en.text(x = x - 60,
+                                                          y = y,
+                                                          s = "{:.0f}".format(x),
+                                                          rotation = 90))
+                
                 self.canvas_en.draw()
         
                                    
@@ -869,7 +876,8 @@ class Create_UI(Gtk.Window):
                 except AttributeError:
                     self.vlines_t = []
                     self.x_vlines_t = []
-
+                    self.txt_vlines_t = []
+                    
                 x = int(round(event.xdata))
                 y = self.t_spk[btn_ind][x]
 
@@ -878,7 +886,11 @@ class Create_UI(Gtk.Window):
                                                       ymin = 0,
                                                       ymax = y,
                                                       color = "black"))
-
+                self.txt_vlines_t.append(self.ax_t.text(x = x - 60,
+                                                          y = y,
+                                                          s = "{:.0f}".format(x),
+                                                          rotation = 90))
+                
                 self.canvas_t.draw()
                     
         
@@ -1055,16 +1067,24 @@ class Create_UI(Gtk.Window):
         self.vlines_en[0].remove()
         self.vlines_en[1].remove()
 
+        self.txt_vlines_en[0].remove()
+        self.txt_vlines_en[1].remove()
+        
         self.vlines_en = []
         self.x_vlines_en = []
-
+        self.txt_vlines_en = []
+        
 
     def _clr_vlines_t(self):
         self.vlines_t[0].remove()
         self.vlines_t[1].remove()
 
+        self.txt_vlines_t[0].remove()
+        self.txt_vlines_t[1].remove()
+        
         self.vlines_t = []
         self.x_vlines_t = []
+        self.txt_vlines_t = []
     
 
     def toggle_check_btn_t(self, btn, name):
