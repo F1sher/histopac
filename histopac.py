@@ -82,10 +82,10 @@ class Analyze_peak():
         #make zeros all negative elements in self.en_spk
         self.en_spk[self.en_spk < 0] = 0
         
-        self.integral = self.calc_integral()
-        self.area = self.calc_area()
-        self.mean = self.calc_mean()
-        self.fwhm = self.calc_fwhm()
+        self.integral, self.integral_err = self.calc_integral()
+        self.area, self.area_err = self.calc_area()
+        self.mean, self.mean_err = self.calc_mean()
+        self.fwhm, self.fwhm_err = self.calc_fwhm()
         self.resol = self.calc_resol()
         
         logging.info("mean = {}, calc = {}".format(self.mean, self.fwhm))
@@ -102,46 +102,43 @@ class Analyze_peak():
 
         
     def calc_integral(self):
-        return np.sum(self.en_spk[self.x_l:self.x_r] + self.bg)
+        integral = np.sum(self.en_spk[self.x_l:self.x_r] + self.bg)
+        integral_err = np.sqrt(integral)
+        
+        return integral, integral_err
 
 
     def calc_area(self):
-        return np.sum(self.en_spk[self.x_l:self.x_r])
+        area = np.sum(self.en_spk[self.x_l:self.x_r])
+        area_err = np.sqrt(area)
+        
+        return area, area_err
         
         
     def calc_mean(self):
-       # w_sum = sum([i * y for i, y in zip(range(self.x_l, self.x_r), self.en_spk[self.x_l:self.x_r])])
         w_sum = np.sum(np.multiply(np.arange(self.x_l, self.x_r), self.en_spk[self.x_l:self.x_r]))
+        mean = w_sum / sum(self.en_spk[self.x_l:self.x_r])
+        mean_err =  np.sqrt( np.sum((self.en_spk[self.x_l:self.x_r] + self.bg) *
+                                    (mean * np.ones(self.x_r - self.x_l) - np.arange(self.x_l, self.x_r))**2) /
+                             ((self.x_r - self.x_l) * np.sum(self.en_spk[self.x_l:self.x_r])) )
         
-        return w_sum / sum(self.en_spk[self.x_l:self.x_r])
+        return mean, mean_err
 
     
     def calc_fwhm(self):
         max_en_spk = max(self.en_spk[self.x_l:self.x_r])
 
-        '''
-        for y in self.en_spk[self.x_l:self.x_r]:
-            if y >= max_en_spk / 2:
-                i = self.en_spk[self.x_l:self.x_r].index(y)
-                break
-        '''
         try:
             i = np.where(self.en_spk[self.x_l:self.x_r] >= max_en_spk / 2)[0][0]
         except IndexError:
             i = self.x_l
 
-        print("i_l = {}".format(self.x_l + i))
+        xp_l = [i - 1, i]
+        xp_l_err = [x + np.sqrt(abs(x)) for x in xp_l]
+        yp_l = [self.en_spk[self.x_l + i - 1], self.en_spk[self.x_l + i]]
             
         k_l = self.en_spk[self.x_l + i] - self.en_spk[self.x_l + i - 1]
         b_l = self.en_spk[self.x_l + i] - k_l * i
-
-        '''
-        for y in self.en_spk[self.x_l + i:self.x_r]:
-            if y <= max_en_spk / 2:
-                i = self.en_spk[self.x_l:self.x_r].index(y)
-                break
-        print("i_r = {}".format(i))
-        '''
 
         i_r_shift = 20
         try:
@@ -149,7 +146,9 @@ class Analyze_peak():
         except IndexError:
             i = self.x_r
 
-        print("i_r = {}".format(self.x_l + i))
+        xp_r = [i - 1, i]
+        xp_r_err = [x + np.sqrt(abs(x)) for x in xp_r]
+        yp_r = [self.en_spk[self.x_l + i - 1], self.en_spk[self.x_l + i]]
         
         k_r = self.en_spk[self.x_l + i] - self.en_spk[self.x_l + i - 1]
         b_r = self.en_spk[self.x_l + i] - k_r * i
@@ -158,8 +157,33 @@ class Analyze_peak():
         self.fwhm_ch_r = (max_en_spk / 2 - b_r) / k_r
 
         self.fwhm_y = max_en_spk / 2 + self.bg[np.where(self.en_spk[self.x_l:self.x_r] == max_en_spk)[0][0]]
+
+        fwhm = self.fwhm_ch_r - self.fwhm_ch_l
+
+        fwhm_err_l, fwhm_err_r = np.zeros(2), np.zeros(2)
         
-        return (self.fwhm_ch_r - self.fwhm_ch_l)
+        k, b = np.polyfit(xp_l_err, yp_l, 1)
+        #fwhm_err_l[0] = k * max_en_spk / 2 + b
+        fwhm_err_l[0] = (max_en_spk / 2 - b ) / k
+        xp_l_err = [x - np.sqrt(abs(x)) for x in xp_l]
+        k, b = np.polyfit(xp_l_err, yp_l, 1)
+        #fwhm_err_l[1] = k * max_en_spk / 2 + b
+        fwhm_err_l[1] = (max_en_spk / 2 - b ) / k
+        logging.info("fwhm_err_l0 = {:.1f}, fwhm_err_l1 = {:.1f}".format(fwhm_err_l[0], fwhm_err_l[1]))
+            
+        k, b = np.polyfit(xp_r_err, yp_r, 1)
+        #fwhm_err_r[0] = k * max_en_spk / 2 + b
+        fwhm_err_r[0] = (max_en_spk / 2 - b ) / k
+        xp_r_err = [x - np.sqrt(x) for x in xp_r]
+        k, b = np.polyfit(xp_r_err, yp_r, 1)
+        #fwhm_err_r[1] = k * max_en_spk / 2 + b
+        fwhm_err_r[1] = (max_en_spk / 2 - b ) / k
+        logging.info("fwhm_err_r0 = {:.1f}, fwhm_err_r1 = {:.1f}".format(fwhm_err_r[0], fwhm_err_r[1]))
+        
+        fwhm_err = np.sqrt((fwhm_err_l[0] - fwhm_err_l[1])**2 + (fwhm_err_r[0] - fwhm_err_r[1])**2)
+        
+        return fwhm, fwhm_err
+    
 
     def calc_resol(self):
         return self.fwhm / self.mean
@@ -288,10 +312,10 @@ class Calc_view_en():
 
     def set_analyze_peak(self, analyze, ch_to_phys):
         self.clr_buf()
-        self.set_integral(analyze.integral)
-        self.set_area(analyze.area)
-        self.set_mean(analyze.mean, ch_to_phys)
-        self.set_fwhm(analyze.fwhm)
+        self.set_integral(analyze.integral, analyze.integral_err)
+        self.set_area(analyze.area, analyze.area_err)
+        self.set_mean(analyze.mean, analyze.mean_err, ch_to_phys)
+        self.set_fwhm(analyze.fwhm, analyze.fwhm_err, ch_to_phys)
         self.set_resol(analyze.resol)
 
 
@@ -308,32 +332,32 @@ class Calc_view_en():
         self._apply_tag_at_line_offset("large_fontsize", self._title_line, len(txt))
         
         
-    def set_integral(self, integral_val):
-        txt = "Integral: {:.0f}k\n".format(integral_val / 1000)
+    def set_integral(self, integral_val, integral_err):
+        txt = "Integral: {:.0f}\u00b1{:.0f} k\n".format(integral_val / 1000, integral_err / 1000)
         self._insert_txt_at_line(txt, self._integral_line)
 
         self._apply_tag_at_line_offset("bold", self._integral_line, len("Integral"))
         self._apply_tag_at_line_offset("large_fontsize", self._integral_line, len(txt) - 1)
 
         
-    def set_area(self, area_val):
-        txt = "Area: {:.0f}k\n".format(area_val / 1000)
+    def set_area(self, area_val, area_err):
+        txt = "Area: {:.0f}\u00b1{:.0f} k\n".format(area_val / 1000, area_err / 1000)
         self._insert_txt_at_line(txt, self._area_line)
         
         self._apply_tag_at_line_offset("bold", self._area_line, len("Area"))
         self._apply_tag_at_line_offset("large_fontsize", self._area_line, len(txt) - 1)
         
         
-    def set_mean(self, mean_val, ch_to_phys):
-        txt = "Position: {:.1f} ({:.1f})\n".format(mean_val, ch_to_phys(mean_val))
+    def set_mean(self, mean_val, mean_err, ch_to_phys):
+        txt = "Position: {:.1f}\u00b1{:.1f} ({:.1f})\n".format(mean_val, mean_err, ch_to_phys(mean_val))
         self._insert_txt_at_line(txt, self._mean_line)
 
         self._apply_tag_at_line_offset("bold", self._mean_line, len("Position"))
         self._apply_tag_at_line_offset("large_fontsize", self._mean_line, len(txt) - 1)
 
 
-    def set_fwhm(self, fwhm_val):
-        txt = "FWHM: {:.1f}\n".format(fwhm_val)
+    def set_fwhm(self, fwhm_val, fwhm_err, ch_to_phys):
+        txt = "FWHM: {:.1f}\u00b1{:.1f} ({:.1f})\n".format(fwhm_val, fwhm_err, ch_to_phys(fwhm_val))
         self._insert_txt_at_line(txt, self._fwhm_line)
 
         self._apply_tag_at_line_offset("bold", self._fwhm_line, len("FWHM"))
@@ -667,7 +691,7 @@ class Create_UI(Gtk.Window):
 
         if num_act_btns == 1:
             try:
-                x = int(float(event.xdata))
+                x = int(round(event.xdata))
                 y = self.en_spk[btn_ind][x]
                 txt = "{:d} ({:.0f}) {:d}".format(x, self.calibr_en.ch_to_keV(btn_ind, x), y)
             except TypeError:
