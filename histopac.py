@@ -633,14 +633,7 @@ class Create_UI(Gtk.Window):
             self.check_btn_t[-1].set_active(True)
             self.check_btn_t[-1].connect("toggled", self.toggle_check_btn_t, gui_params.t[i])
             grid_check_btn_t.attach(hbox, i % 2, i / 2, 1, 1)
-            
-            """
-            self.check_btn_t.append(Gtk.CheckButton.new_with_label(gui_params.t[i]))
-            self.check_btn_t[-1].set_active(True)
-            self.check_btn_t[-1].connect("toggled", self.toggle_check_btn_t, gui_params.t[i])
-            grid_check_btn_t.attach(self.check_btn_t[-1], i % 2, i / 2, 1, 1)
-            """
-            
+                        
         vbox_t_spk_chooser.pack_start(grid_check_btn_t, False, False, 0)
 
         vbox_calc_t = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
@@ -655,10 +648,13 @@ class Create_UI(Gtk.Window):
         btn_analyze_exp_t.connect("clicked", self.click_btn_analyze_exp_t)
         btn_clr_analyze_t = Gtk.Button("Clear Analyze")
         btn_clr_analyze_t.connect("clicked", self.click_btn_clr_analyze_t)
-
+        btn_log_scale_t = Gtk.Button("Log Scale")
+        btn_log_scale_t.connect("clicked", self.click_btn_log_scale_t)
+        
         grid_btns_cntrl.attach(btn_analyze_peak_t, 0, 0, 1, 1)
         grid_btns_cntrl.attach(btn_analyze_exp_t, 1, 0, 1, 1)
         grid_btns_cntrl.attach(btn_clr_analyze_t, 0, 1, 1, 1)
+        grid_btns_cntrl.attach(btn_log_scale_t, 0, 2, 1, 1)
 
         grid_t.attach(grid_btns_cntrl, 0, 2, 1, 1)
         
@@ -976,6 +972,19 @@ class Create_UI(Gtk.Window):
             self._clr_analyze_t()
         except AttributeError:
             logging.error("AttributeError in click_btn_clr_analyze_t()")
+
+        self.canvas_t.draw()
+
+
+    def click_btn_log_scale_t(self, btn):
+        if btn.get_label() == "Log Scale":
+            btn.set_label("Linear Scale")
+            self.ax_t.set_yscale("log")
+            bottom, top = self.ax_t.get_ylim()
+            self.ax_t.set_ylim(bottom, top)
+        else:
+            btn.set_label("Log Scale")
+            self.ax_t.set_yscale("linear")
 
         self.canvas_t.draw()
         
