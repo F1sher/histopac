@@ -553,7 +553,10 @@ class Create_UI(Gtk.Window):
             '''
 
         vbox_calc_en = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
-        self.calc_view_en = Calc_view_en()
+        txtview_width = 270
+
+        self.calc_view_en = Calc_view_en() 
+        self.calc_view_en.txtview.set_size_request(txtview_width, -1)
         vbox_calc_en.pack_start(self.calc_view_en.txtview, False, False, 0)
         grid_en.attach(vbox_calc_en, 0, 1, 1, 1)
         
@@ -637,7 +640,9 @@ class Create_UI(Gtk.Window):
         vbox_t_spk_chooser.pack_start(grid_check_btn_t, False, False, 0)
 
         vbox_calc_t = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
+
         self.calc_view_t = Calc_view_t()
+        self.calc_view_t.txtview.set_size_request(txtview_width, -1)
         vbox_calc_t.pack_start(self.calc_view_t.txtview, False, False, 0)
         grid_t.attach(vbox_calc_t, 0, 1, 1, 1)
         
