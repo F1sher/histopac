@@ -4,7 +4,7 @@
 	"coinc mode?": "True",
 	"time of exposition [s]": 400000,
 	"histo folder": "/home/das/job/dsp/test/spectra/171201_181Hf_RhGe_3478",
-	"en_range D1": [380, 460, 1400, 1600],
+	"en_range D1": [354, 459, 1400, 1600],
 	"en_range D2": [360, 450, 1400, 1570],
 	"en_range D3": [400, 520, 1600, 1800],
 	"en_range D4": [320, 415, 1240, 1390]

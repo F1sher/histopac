@@ -82,10 +82,10 @@ class Analyze_peak():
         #make zeros all negative elements in self.en_spk
         self.en_spk[self.en_spk < 0] = 0
         
-        self.integral = self.calc_integral()
-        self.area = self.calc_area()
-        self.mean = self.calc_mean()
-        self.fwhm = self.calc_fwhm()
+        self.integral, self.integral_err = self.calc_integral()
+        self.area, self.area_err = self.calc_area()
+        self.mean, self.mean_err = self.calc_mean()
+        self.fwhm, self.fwhm_err = self.calc_fwhm()
         self.resol = self.calc_resol()
         
         logging.info("mean = {}, calc = {}".format(self.mean, self.fwhm))
@@ -102,46 +102,43 @@ class Analyze_peak():
 
         
     def calc_integral(self):
-        return np.sum(self.en_spk[self.x_l:self.x_r] + self.bg)
+        integral = np.sum(self.en_spk[self.x_l:self.x_r] + self.bg)
+        integral_err = np.sqrt(integral)
+        
+        return integral, integral_err
 
 
     def calc_area(self):
-        return np.sum(self.en_spk[self.x_l:self.x_r])
+        area = np.sum(self.en_spk[self.x_l:self.x_r])
+        area_err = np.sqrt(area)
+        
+        return area, area_err
         
         
     def calc_mean(self):
-       # w_sum = sum([i * y for i, y in zip(range(self.x_l, self.x_r), self.en_spk[self.x_l:self.x_r])])
         w_sum = np.sum(np.multiply(np.arange(self.x_l, self.x_r), self.en_spk[self.x_l:self.x_r]))
+        mean = w_sum / sum(self.en_spk[self.x_l:self.x_r])
+        mean_err =  np.sqrt( np.sum((self.en_spk[self.x_l:self.x_r] + self.bg) *
+                                    (mean * np.ones(self.x_r - self.x_l) - np.arange(self.x_l, self.x_r))**2) /
+                             ((self.x_r - self.x_l) * np.sum(self.en_spk[self.x_l:self.x_r])) )
         
-        return w_sum / sum(self.en_spk[self.x_l:self.x_r])
+        return mean, mean_err
 
     
     def calc_fwhm(self):
         max_en_spk = max(self.en_spk[self.x_l:self.x_r])
 
-        '''
-        for y in self.en_spk[self.x_l:self.x_r]:
-            if y >= max_en_spk / 2:
-                i = self.en_spk[self.x_l:self.x_r].index(y)
-                break
-        '''
         try:
             i = np.where(self.en_spk[self.x_l:self.x_r] >= max_en_spk / 2)[0][0]
         except IndexError:
             i = self.x_l
 
-        print("i_l = {}".format(self.x_l + i))
+        xp_l = [i - 1, i]
+        xp_l_err = [x + np.sqrt(abs(x)) for x in xp_l]
+        yp_l = [self.en_spk[self.x_l + i - 1], self.en_spk[self.x_l + i]]
             
         k_l = self.en_spk[self.x_l + i] - self.en_spk[self.x_l + i - 1]
         b_l = self.en_spk[self.x_l + i] - k_l * i
-
-        '''
-        for y in self.en_spk[self.x_l + i:self.x_r]:
-            if y <= max_en_spk / 2:
-                i = self.en_spk[self.x_l:self.x_r].index(y)
-                break
-        print("i_r = {}".format(i))
-        '''
 
         i_r_shift = 20
         try:
@@ -149,7 +146,9 @@ class Analyze_peak():
         except IndexError:
             i = self.x_r
 
-        print("i_r = {}".format(self.x_l + i))
+        xp_r = [i - 1, i]
+        xp_r_err = [x + np.sqrt(abs(x)) for x in xp_r]
+        yp_r = [self.en_spk[self.x_l + i - 1], self.en_spk[self.x_l + i]]
         
         k_r = self.en_spk[self.x_l + i] - self.en_spk[self.x_l + i - 1]
         b_r = self.en_spk[self.x_l + i] - k_r * i
@@ -158,8 +157,33 @@ class Analyze_peak():
         self.fwhm_ch_r = (max_en_spk / 2 - b_r) / k_r
 
         self.fwhm_y = max_en_spk / 2 + self.bg[np.where(self.en_spk[self.x_l:self.x_r] == max_en_spk)[0][0]]
+
+        fwhm = self.fwhm_ch_r - self.fwhm_ch_l
+
+        fwhm_err_l, fwhm_err_r = np.zeros(2), np.zeros(2)
         
-        return (self.fwhm_ch_r - self.fwhm_ch_l)
+        k, b = np.polyfit(xp_l_err, yp_l, 1)
+        #fwhm_err_l[0] = k * max_en_spk / 2 + b
+        fwhm_err_l[0] = (max_en_spk / 2 - b ) / k
+        xp_l_err = [x - np.sqrt(abs(x)) for x in xp_l]
+        k, b = np.polyfit(xp_l_err, yp_l, 1)
+        #fwhm_err_l[1] = k * max_en_spk / 2 + b
+        fwhm_err_l[1] = (max_en_spk / 2 - b ) / k
+        logging.info("fwhm_err_l0 = {:.1f}, fwhm_err_l1 = {:.1f}".format(fwhm_err_l[0], fwhm_err_l[1]))
+            
+        k, b = np.polyfit(xp_r_err, yp_r, 1)
+        #fwhm_err_r[0] = k * max_en_spk / 2 + b
+        fwhm_err_r[0] = (max_en_spk / 2 - b ) / k
+        xp_r_err = [x - np.sqrt(x) for x in xp_r]
+        k, b = np.polyfit(xp_r_err, yp_r, 1)
+        #fwhm_err_r[1] = k * max_en_spk / 2 + b
+        fwhm_err_r[1] = (max_en_spk / 2 - b ) / k
+        logging.info("fwhm_err_r0 = {:.1f}, fwhm_err_r1 = {:.1f}".format(fwhm_err_r[0], fwhm_err_r[1]))
+        
+        fwhm_err = np.sqrt((fwhm_err_l[0] - fwhm_err_l[1])**2 + (fwhm_err_r[0] - fwhm_err_r[1])**2)
+        
+        return fwhm, fwhm_err
+    
 
     def calc_resol(self):
         return self.fwhm / self.mean
@@ -168,7 +192,7 @@ class Analyze_peak():
 
 class Calibr_en():
     def __init__(self):
-        self.ch = [[-1, -1] for i in range(det_num)]
+        self.ch = [[-1.0, -1.0] for i in range(det_num)]
         self.en = [[-1.0, -1.0] for i in range(det_num)]
 
         self.set_ch_en_from_file(ini["calibr_en_path"])
@@ -209,6 +233,10 @@ class Calibr_en():
 
     def save_file_ch_en(self, fname):
         with open(fname, "w+") as f:
+            d = {"channels": self.ch,
+                 "energies": self.en}
+            json.dump(d, f)
+            '''
             data = "{\n"
             data += "\t\"channels\": ["
             data +=  str(self.ch[0])
@@ -222,7 +250,7 @@ class Calibr_en():
             data += "]\n"
             data += "}"
             f.write(data)
-        
+            '''
 
             
 class Dialog_calibr_en(Gtk.Dialog):
@@ -240,8 +268,8 @@ class Dialog_calibr_en(Gtk.Dialog):
         self.entry_en = [Gtk.Entry() for i in range(det_num)]
 
         for i in range(det_num):
-            self.entry_ch[i].set_text(str(calibr_en.ch[i]))
-            self.entry_en[i].set_text(str(calibr_en.en[i]))
+            self.entry_ch[i].set_text(str(calibr_en.ch[i][0]) + ', ' + str(calibr_en.ch[i][1]))
+            self.entry_en[i].set_text(str(calibr_en.en[i][0]) + ', ' + str(calibr_en.en[i][1]))
             
         self.grid = Gtk.Grid()
 
@@ -284,10 +312,10 @@ class Calc_view_en():
 
     def set_analyze_peak(self, analyze, ch_to_phys):
         self.clr_buf()
-        self.set_integral(analyze.integral)
-        self.set_area(analyze.area)
-        self.set_mean(analyze.mean, ch_to_phys)
-        self.set_fwhm(analyze.fwhm)
+        self.set_integral(analyze.integral, analyze.integral_err)
+        self.set_area(analyze.area, analyze.area_err)
+        self.set_mean(analyze.mean, analyze.mean_err, ch_to_phys)
+        self.set_fwhm(analyze.fwhm, analyze.fwhm_err, ch_to_phys)
         self.set_resol(analyze.resol)
 
 
@@ -304,32 +332,32 @@ class Calc_view_en():
         self._apply_tag_at_line_offset("large_fontsize", self._title_line, len(txt))
         
         
-    def set_integral(self, integral_val):
-        txt = "Integral: {:.0f}k\n".format(integral_val / 1000)
+    def set_integral(self, integral_val, integral_err):
+        txt = "Integral: {:.0f}\u00b1{:.0f} k\n".format(integral_val / 1000, integral_err / 1000)
         self._insert_txt_at_line(txt, self._integral_line)
 
         self._apply_tag_at_line_offset("bold", self._integral_line, len("Integral"))
         self._apply_tag_at_line_offset("large_fontsize", self._integral_line, len(txt) - 1)
 
         
-    def set_area(self, area_val):
-        txt = "Area: {:.0f}k\n".format(area_val / 1000)
+    def set_area(self, area_val, area_err):
+        txt = "Area: {:.0f}\u00b1{:.0f} k\n".format(area_val / 1000, area_err / 1000)
         self._insert_txt_at_line(txt, self._area_line)
         
         self._apply_tag_at_line_offset("bold", self._area_line, len("Area"))
         self._apply_tag_at_line_offset("large_fontsize", self._area_line, len(txt) - 1)
         
         
-    def set_mean(self, mean_val, ch_to_phys):
-        txt = "Position: {:.1f} ({:.1f})\n".format(mean_val, ch_to_phys(mean_val))
+    def set_mean(self, mean_val, mean_err, ch_to_phys):
+        txt = "Position: {:.1f}\u00b1{:.1f} ({:.1f})\n".format(mean_val, mean_err, ch_to_phys(mean_val))
         self._insert_txt_at_line(txt, self._mean_line)
 
         self._apply_tag_at_line_offset("bold", self._mean_line, len("Position"))
         self._apply_tag_at_line_offset("large_fontsize", self._mean_line, len(txt) - 1)
 
 
-    def set_fwhm(self, fwhm_val):
-        txt = "FWHM: {:.1f}\n".format(fwhm_val)
+    def set_fwhm(self, fwhm_val, fwhm_err, ch_to_phys):
+        txt = "FWHM: {:.1f}\u00b1{:.1f} ({:.1f})\n".format(fwhm_val, fwhm_err, ch_to_phys(fwhm_val))
         self._insert_txt_at_line(txt, self._fwhm_line)
 
         self._apply_tag_at_line_offset("bold", self._fwhm_line, len("FWHM"))
@@ -525,7 +553,10 @@ class Create_UI(Gtk.Window):
             '''
 
         vbox_calc_en = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
-        self.calc_view_en = Calc_view_en()
+        txtview_width = 270
+
+        self.calc_view_en = Calc_view_en() 
+        self.calc_view_en.txtview.set_size_request(txtview_width, -1)
         vbox_calc_en.pack_start(self.calc_view_en.txtview, False, False, 0)
         grid_en.attach(vbox_calc_en, 0, 1, 1, 1)
         
@@ -605,18 +636,13 @@ class Create_UI(Gtk.Window):
             self.check_btn_t[-1].set_active(True)
             self.check_btn_t[-1].connect("toggled", self.toggle_check_btn_t, gui_params.t[i])
             grid_check_btn_t.attach(hbox, i % 2, i / 2, 1, 1)
-            
-            """
-            self.check_btn_t.append(Gtk.CheckButton.new_with_label(gui_params.t[i]))
-            self.check_btn_t[-1].set_active(True)
-            self.check_btn_t[-1].connect("toggled", self.toggle_check_btn_t, gui_params.t[i])
-            grid_check_btn_t.attach(self.check_btn_t[-1], i % 2, i / 2, 1, 1)
-            """
-            
+                        
         vbox_t_spk_chooser.pack_start(grid_check_btn_t, False, False, 0)
 
         vbox_calc_t = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
+
         self.calc_view_t = Calc_view_t()
+        self.calc_view_t.txtview.set_size_request(txtview_width, -1)
         vbox_calc_t.pack_start(self.calc_view_t.txtview, False, False, 0)
         grid_t.attach(vbox_calc_t, 0, 1, 1, 1)
         
@@ -627,10 +653,13 @@ class Create_UI(Gtk.Window):
         btn_analyze_exp_t.connect("clicked", self.click_btn_analyze_exp_t)
         btn_clr_analyze_t = Gtk.Button("Clear Analyze")
         btn_clr_analyze_t.connect("clicked", self.click_btn_clr_analyze_t)
-
+        btn_log_scale_t = Gtk.Button("Log Scale")
+        btn_log_scale_t.connect("clicked", self.click_btn_log_scale_t)
+        
         grid_btns_cntrl.attach(btn_analyze_peak_t, 0, 0, 1, 1)
         grid_btns_cntrl.attach(btn_analyze_exp_t, 1, 0, 1, 1)
         grid_btns_cntrl.attach(btn_clr_analyze_t, 0, 1, 1, 1)
+        grid_btns_cntrl.attach(btn_log_scale_t, 0, 2, 1, 1)
 
         grid_t.attach(grid_btns_cntrl, 0, 2, 1, 1)
         
@@ -660,16 +689,16 @@ class Create_UI(Gtk.Window):
     def motion_mpl_en(self, event):
         txt = ""
         num_act_btns, btn_ind = self.count_act_check_btns_en()
-                
+
         if num_act_btns == 1:
             try:
-                x = int(float(event.xdata))
+                x = int(round(event.xdata))
                 y = self.en_spk[btn_ind][x]
-                txt = "{:d} ({:.0f}) {:d}".format(x, self.calibr_en.k * x + self.calibr_en.b, y)
+                txt = "{:d} ({:.0f}) {:d}".format(x, self.calibr_en.ch_to_keV(btn_ind, x), y)
             except TypeError:
                 txt = "Out of range"
 
-        self.entry_ptr_en.set_text(txt)
+            self.entry_ptr_en.set_text(txt)
 
 
     def press_btn_mpl_en(self, event):
@@ -686,6 +715,7 @@ class Create_UI(Gtk.Window):
                 except AttributeError:
                     self.vlines_en = []
                     self.x_vlines_en = []
+                    self.txt_vlines_en = []
                      
                 x = int(round(event.xdata))
                 y = self.en_spk[btn_ind][x]
@@ -695,6 +725,12 @@ class Create_UI(Gtk.Window):
                                                         ymin = 0,
                                                         ymax = y,
                                                         color = "black"))
+                #text near vlines
+                self.txt_vlines_en.append(self.ax_en.text(x = x - 60,
+                                                          y = y,
+                                                          s = "{:.0f}".format(x),
+                                                          rotation = 90))
+                
                 self.canvas_en.draw()
         
                                    
@@ -714,8 +750,14 @@ class Create_UI(Gtk.Window):
 
         if response == Gtk.ResponseType.OK:
             #get data from entry_en and entry_ch
-            ch = [int(dialog.entry_ch[0].get_text()), int(dialog.entry_ch[1].get_text())]
-            en = [float(dialog.entry_en[0].get_text()), float(dialog.entry_en[1].get_text())]
+            ch = [[-1.0, -1.0] for i in range(det_num)]
+            en = [[-1.0, -1.0] for i in range(det_num)]
+            for i in range(det_num):
+                for j in range(2):
+                    ch[i][j] = float(dialog.entry_ch[i].get_text().split(', ')[j])
+                    en[i][j] = float(dialog.entry_en[i].get_text().split(', ')[j])
+
+            logging.info("\nch = {}\nen = {}".format(ch, en))        
             #save data in obj and file
             self.calibr_en.set_ch_en_from_input(ch, en)
             self.calibr_en.save_file_ch_en(ini["calibr_en_path"])
@@ -750,13 +792,13 @@ class Create_UI(Gtk.Window):
             self.analyze_fwhm_en = self.ax_en.hlines(analyze.fwhm_y,
                                                      x_l + analyze.fwhm_ch_l,
                                                      x_l + analyze.fwhm_ch_r)
-            print("analyze_fwhm = ({:.0f} {:.1f} {:.1f})".format(analyze.fwhm_y,
-                                                                 x_l + analyze.fwhm_ch_l,
-                                                                 x_l + analyze.fwhm_ch_r))
             
             self.canvas_en.draw()
 
-            self.calc_view_en.set_analyze_peak(analyze)
+            def ch_to_phys(ch):
+                return self.calibr_en.ch_to_keV(btn_ind, ch)
+
+            self.calc_view_en.set_analyze_peak(analyze, ch_to_phys)
 
 
     def click_btn_clr_analyze_en(self, btn):
@@ -780,7 +822,7 @@ class Create_UI(Gtk.Window):
             self.cfg["en_range"][btn_ind][0] = self.x_vlines_en[0]
             self.cfg["en_range"][btn_ind][1] = self.x_vlines_en[1]
             #save cfg to file
-            save_cfg(self.cfg, cfg_fname)
+            save_cfg(self.cfg, ini["cfg_path"])
 
             self._clr_vlines_en()
             self.canvas_en.draw()
@@ -859,7 +901,8 @@ class Create_UI(Gtk.Window):
                 except AttributeError:
                     self.vlines_t = []
                     self.x_vlines_t = []
-
+                    self.txt_vlines_t = []
+                    
                 x = int(round(event.xdata))
                 y = self.t_spk[btn_ind][x]
 
@@ -868,7 +911,11 @@ class Create_UI(Gtk.Window):
                                                       ymin = 0,
                                                       ymax = y,
                                                       color = "black"))
-
+                self.txt_vlines_t.append(self.ax_t.text(x = x - 60,
+                                                          y = y,
+                                                          s = "{:.0f}".format(x),
+                                                          rotation = 90))
+                
                 self.canvas_t.draw()
                     
         
@@ -881,7 +928,6 @@ class Create_UI(Gtk.Window):
         except AttributeError:
             logging.error("AttributeError in click_btn_analyze_exp_t()")
 
-
         if num_act_btns == 1:
             x_l = min(self.x_vlines_t)
             x_r = max(self.x_vlines_t)
@@ -893,7 +939,13 @@ class Create_UI(Gtk.Window):
             
             self.canvas_t.draw()
 
-            self.calc_view_t.set_analyze_peak(analyze)
+            def ch_to_phys(ch):
+                try:
+                    return self.ch_to_ns(btn_ind)
+                except AttributeError:
+                    return -1
+                
+            self.calc_view_t.set_analyze_peak(analyze, ch_to_phys)
             
         
     def click_btn_analyze_exp_t(self, btn):
@@ -925,6 +977,19 @@ class Create_UI(Gtk.Window):
             self._clr_analyze_t()
         except AttributeError:
             logging.error("AttributeError in click_btn_clr_analyze_t()")
+
+        self.canvas_t.draw()
+
+
+    def click_btn_log_scale_t(self, btn):
+        if btn.get_label() == "Log Scale":
+            btn.set_label("Linear Scale")
+            self.ax_t.set_yscale("log")
+            bottom, top = self.ax_t.get_ylim()
+            self.ax_t.set_ylim(bottom, top)
+        else:
+            btn.set_label("Log Scale")
+            self.ax_t.set_yscale("linear")
 
         self.canvas_t.draw()
         
@@ -1040,16 +1105,24 @@ class Create_UI(Gtk.Window):
         self.vlines_en[0].remove()
         self.vlines_en[1].remove()
 
+        self.txt_vlines_en[0].remove()
+        self.txt_vlines_en[1].remove()
+        
         self.vlines_en = []
         self.x_vlines_en = []
-
+        self.txt_vlines_en = []
+        
 
     def _clr_vlines_t(self):
         self.vlines_t[0].remove()
         self.vlines_t[1].remove()
 
+        self.txt_vlines_t[0].remove()
+        self.txt_vlines_t[1].remove()
+        
         self.vlines_t = []
         self.x_vlines_t = []
+        self.txt_vlines_t = []
     
 
     def toggle_check_btn_t(self, btn, name):
