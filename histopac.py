@@ -14,6 +14,7 @@ from matplotlib.backends.backend_gtk3 import NavigationToolbar2GTK3 as Navigatio
 
 import numpy as np
 
+from os import getcwd
 from os import path
 from struct import unpack
 
@@ -31,7 +32,7 @@ histo_t_fnames = ["TIME1.SPK", "TIME2.SPK", "TIME3.SPK", "TIME4.SPK",
                   "TIME5.SPK", "TIME6.SPK", "TIME7.SPK", "TIME8.SPK",
                   "TIME9.SPK", "TIME10.SPK", "TIME11.SPK", "TIME12.SPK"]
 
-ini_fname = "./ini.json"
+ini_fname = "/home/das/job/histopac/ini.json"
 ini = None
 
 
@@ -1047,7 +1048,8 @@ class Create_UI(Gtk.Window):
 
         for i in range(t_spk_num):
             self.t_lines.append( self.ax_t.plot(x, self.t_spk[i], marker="o",
-                                                ms=5, mew=0, c=gui_params.t_spk_colors[i], lw=0)[0] )
+                                                ms=5, mew=0,
+                                                color=gui_params.t_spk_mpl_colors[i], lw=0)[0] )
         self.set_lim_vals_t(0)
         
         self.canvas_t.draw()
