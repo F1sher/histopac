@@ -14,6 +14,7 @@ from matplotlib.backends.backend_gtk3 import NavigationToolbar2GTK3 as Navigatio
 
 import numpy as np
 
+from os import getcwd
 from os import path
 from struct import unpack
 
@@ -31,7 +32,7 @@ histo_t_fnames = ["TIME1.SPK", "TIME2.SPK", "TIME3.SPK", "TIME4.SPK",
                   "TIME5.SPK", "TIME6.SPK", "TIME7.SPK", "TIME8.SPK",
                   "TIME9.SPK", "TIME10.SPK", "TIME11.SPK", "TIME12.SPK"]
 
-ini_fname = "./ini.json"
+ini_fname = "/home/das/job/histopac/ini.json"
 ini = None
 
 
@@ -290,6 +291,7 @@ class Dialog_calibr_en(Gtk.Dialog):
 class Calc_view_en():
     def __init__(self):
         self.txtview = Gtk.TextView()
+        self.txtview.set_editable(False)
         self.txtview.set_size_request(-1, 150) 
         self.buf = self.txtview.get_buffer()
 
@@ -349,7 +351,7 @@ class Calc_view_en():
         
         
     def set_mean(self, mean_val, mean_err, ch_to_phys):
-        txt = "Position: {:.1f}\u00b1{:.1f} ({:.1f})\n".format(mean_val, mean_err, ch_to_phys(mean_val))
+        txt = "Position: {:.1f}\u00b1{:.1f} <{:.1f}>\n".format(mean_val, mean_err, ch_to_phys(mean_val))
         self._insert_txt_at_line(txt, self._mean_line)
 
         self._apply_tag_at_line_offset("bold", self._mean_line, len("Position"))
@@ -357,7 +359,7 @@ class Calc_view_en():
 
 
     def set_fwhm(self, fwhm_val, fwhm_err, ch_to_phys):
-        txt = "FWHM: {:.1f}\u00b1{:.1f} ({:.1f})\n".format(fwhm_val, fwhm_err, ch_to_phys(fwhm_val))
+        txt = "FWHM: {:.1f}\u00b1{:.1f} <{:.1f}>\n".format(fwhm_val, fwhm_err, ch_to_phys(fwhm_val))
         self._insert_txt_at_line(txt, self._fwhm_line)
 
         self._apply_tag_at_line_offset("bold", self._fwhm_line, len("FWHM"))
@@ -597,6 +599,7 @@ class Create_UI(Gtk.Window):
         ###Figs t spk###
         self.fig_t = Figure(figsize = (5, 4), dpi = 100, tight_layout = True)
         self.canvas_t = FigureCanvas(self.fig_t)
+        self.canvas_t.mpl_connect("motion_notify_event", self.motion_mpl_t)
         self.canvas_t.mpl_connect("button_press_event", self.press_btn_mpl_t)
 
         self.ax_t = self.fig_t.add_subplot(111)
@@ -662,6 +665,12 @@ class Create_UI(Gtk.Window):
         grid_btns_cntrl.attach(btn_log_scale_t, 0, 2, 1, 1)
 
         grid_t.attach(grid_btns_cntrl, 0, 2, 1, 1)
+
+        vbox_ptr_t = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
+        self.entry_ptr_t = Gtk.Entry()
+        self.entry_ptr_t.editable = False
+        vbox_ptr_t.pack_start(self.entry_ptr_t, False, False, 0)
+        grid_t.attach(vbox_ptr_t, 0, 3, 1, 1)
         
         hbox_t.pack_start(vbox_mp_t, True, True, 0)
         hbox_t.pack_start(grid_t, False, False, 5)
@@ -694,7 +703,7 @@ class Create_UI(Gtk.Window):
             try:
                 x = int(round(event.xdata))
                 y = self.en_spk[btn_ind][x]
-                txt = "{:d} ({:.0f}) {:d}".format(x, self.calibr_en.ch_to_keV(btn_ind, x), y)
+                txt = "{:d} <{:.0f}> {:d}".format(x, self.calibr_en.ch_to_keV(btn_ind, x), y)
             except TypeError:
                 txt = "Out of range"
 
@@ -887,6 +896,21 @@ class Create_UI(Gtk.Window):
         return num_act_btns, btn_ind
         
 
+    def motion_mpl_t(self, event):
+        txt = ""
+        num_act_btns, btn_ind = self.count_act_check_btns_t()
+
+        if num_act_btns == 1:
+            try:
+                x = int(round(event.xdata))
+                y = self.t_spk[btn_ind][x]
+                txt = "{:d} {:d}".format(x, y)
+            except TypeError:
+                txt = "Out of range"
+
+            self.entry_ptr_t.set_text(txt)
+
+    
     def press_btn_mpl_t(self, event):
         r_mouse_btn = 3
         num_act_btns, btn_ind = self.count_act_check_btns_t()
@@ -1047,7 +1071,8 @@ class Create_UI(Gtk.Window):
 
         for i in range(t_spk_num):
             self.t_lines.append( self.ax_t.plot(x, self.t_spk[i], marker="o",
-                                                ms=5, mew=0, c=gui_params.t_spk_colors[i], lw=0)[0] )
+                                                ms=5, mew=0,
+                                                color=gui_params.t_spk_mpl_colors[i], lw=0)[0] )
         self.set_lim_vals_t(0)
         
         self.canvas_t.draw()

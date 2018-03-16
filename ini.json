@@ -1,5 +1,5 @@
 {
-    "cfg_path": "./testspk/cfg_.json",
-    "config_path": "./testspk/config.json",
-    "calibr_en_path": "./testspk/calibr_en.json"
+    "cfg_path": "/home/das/job/histopac/testspk/cfg_.json",
+    "config_path": "/home/das/job/histopac/testspk/config.json",
+    "calibr_en_path": "/home/das/job/histopac/testspk/calibr_en.json"
 }
