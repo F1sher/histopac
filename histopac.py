@@ -1065,7 +1065,7 @@ class Create_UI(Gtk.Window):
         
         for i in range(det_num):
             self.en_lines.append( self.ax_en.plot(x, self.en_spk[i], marker="o",
-                                                  ms=3, mew=0, c=gui_params.det_colors[i], lw=1.0)[0] )
+                                                  ms=3, mew=0, c=gui_params.det_mpl_colors[i], lw=1.0)[0] )
         self.set_lim_vals_en(0)     
         self.canvas_en.draw()
 
