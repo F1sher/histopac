@@ -39,14 +39,13 @@ ini = None
 @click.command()
 @click.argument("dir_name", type=click.Path(exists=True))
 def main(dir_name):
-    """
-    Load and plot PAC spectra.
+    """"Load and plot PAC spectra.
     histopac allows to view/set ENergy windows,
     analyze ENergy and Time peaks, analyze Time exponents.
-
+    The pathways for files which are required for the program
+    are specified in file {:s}
     Args:\n
-        dir_name (str): Directory name with PAC spectra.
-    """
+        dir_name (str): Directory path with PAC spectra."""
     
     logging.basicConfig(format="{File %(filename)s, line %(lineno)d} %(levelname)s:%(asctime)s:%(message)s",
                         datefmt="%Y/%m/%d %H-%M-%S",
@@ -1065,7 +1064,7 @@ class Create_UI(Gtk.Window):
         
         for i in range(det_num):
             self.en_lines.append( self.ax_en.plot(x, self.en_spk[i], marker="o",
-                                                  ms=3, mew=0, c=gui_params.det_colors[i], lw=1.0)[0] )
+                                                  ms=3, mew=0, c=gui_params.det_mpl_colors[i], lw=1.0)[0] )
         self.set_lim_vals_en(0)     
         self.canvas_en.draw()
 
@@ -1187,6 +1186,14 @@ def get_histos_from_folder(foldername = "./testspk/"):
     return en_spk, t_spk
 
 
+def set_ini(path_ini_file, **kwargs):
+    with open(path_ini_file, "w") as fp_ini:
+        ini = json.load(fp_ini)
+
+        for path_name in ini.keys():
+            if path_name in kwargs.keys():
+                ini[path_name] = kwargs[path_name]
+
 
 def parse_ini(path_ini_file):
     ini = {}
@@ -1195,7 +1202,6 @@ def parse_ini(path_ini_file):
         ini = json.load(fp_ini)
 
     return ini
-
 
 
 def parse_cfg(path_cfg_file):
