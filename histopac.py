@@ -856,7 +856,7 @@ class Create_UI(Gtk.Window):
             self.cfg["en_range"][btn_ind][2] = self.x_vlines_en[0]
             self.cfg["en_range"][btn_ind][3] = self.x_vlines_en[1]
             #save cfg to file
-            save_cfg(self.cfg, cfg_fname)
+            save_cfg(self.cfg, ini["cfg_path"])
             
             self._clr_vlines_en()
             self.canvas_en.draw()
