@@ -17,13 +17,14 @@ class Ref_spk():
         print(self.trans)
 
         
-    def get_isotope_trans(self, isotope):
-        intens = []
+    def fill_isotope_trans(self, isotope):
+        self.transitions = []
         
         try:
             for line in self.trans[isotope].keys():
                 en = float(line)
-                I = self.trans[line]
-                intens.append([en, I])
+                I = self.trans[isotope][line]
+                self.transitions.append([en, I])
         except KeyError:
             print("Error: no entry for {} isotope".format(isotope))
+            raise Exception("KeyError")

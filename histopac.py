@@ -19,6 +19,7 @@ from os import path
 from struct import unpack
 
 import gui_params
+from ref_spk import Ref_spk
 
 
 det_num = 4
@@ -33,6 +34,7 @@ histo_t_fnames = ["TIME1.SPK", "TIME2.SPK", "TIME3.SPK", "TIME4.SPK",
                   "TIME9.SPK", "TIME10.SPK", "TIME11.SPK", "TIME12.SPK"]
 
 ini_fname = "/home/das/job/histopac/ini.json"
+refspk_fname = "./ref_transitions.json"
 ini = None
 
 
@@ -213,8 +215,12 @@ class Calibr_en():
 
     def ch_to_keV(self, det_i, ch):
         return self.k[det_i] * ch + self.b[det_i]
-        
-        
+
+
+    def keV_to_ch(self, det_i, keV):
+        return (keV - self.b[det_i]) / self.k[det_i]
+
+    
     def set_ch_en_from_file(self, fname):
         with open(fname, "r") as f:
             data = f.read(2048)
@@ -546,13 +552,7 @@ class Create_UI(Gtk.Window):
             self.check_btn_en[-1].set_active(True)
             self.check_btn_en[-1].connect("toggled", self.toggle_check_btn_en, gui_params.en[i])
             vbox_en_spk_chooser.pack_start(hbox, False, False, 0)
-            '''
-            self.check_btn_en.append(Gtk.CheckButton.new_with_label())#gui_params.en[i]))
-            self.check_btn_en[-1].set_active(True)
-            self.check_btn_en[-1].connect("toggled", self.toggle_check_btn_en, gui_params.en[i])
-            vbox_en_spk_chooser.pack_start(self.check_btn_en[-1], False, False, 0)
-            '''
-
+    
         vbox_calc_en = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
         txtview_width = 270
 
@@ -575,6 +575,13 @@ class Create_UI(Gtk.Window):
         btn_set_rwin_en.connect("clicked", self.click_btn_set_rwin_en)
         btn_show_wins_en = Gtk.Button("Show Wins")
         btn_show_wins_en.connect("clicked", self.click_btn_en_show_wins)
+        self.combobox_isotopes = Gtk.ComboBoxText()
+        self.combobox_isotopes.append_text("44Ti")
+        self.combobox_isotopes.append_text("111Cd")
+        self.combobox_isotopes.append_text("181Ta")
+        self.combobox_isotopes.set_active(0)
+        btn_show_ref_spk = Gtk.Button("Show Ref")
+        btn_show_ref_spk.connect("clicked", self.click_btn_show_ref_spk)
         
         grid_btns_cntrl.attach(btn_calibr_en, 0, 0, 1, 1)
         grid_btns_cntrl.attach(btn_analyze_en, 0, 1, 1, 1)
@@ -582,6 +589,8 @@ class Create_UI(Gtk.Window):
         grid_btns_cntrl.attach(btn_set_lwin_en, 0, 2, 1, 1)
         grid_btns_cntrl.attach(btn_set_rwin_en, 1, 2, 1, 1)
         grid_btns_cntrl.attach(btn_show_wins_en, 0, 3, 1, 1)
+        grid_btns_cntrl.attach(self.combobox_isotopes, 0, 4, 1, 1)
+        grid_btns_cntrl.attach(btn_show_ref_spk, 1, 4, 1, 1)
         
         grid_en.attach(grid_btns_cntrl, 0, 2, 1, 1)
         
@@ -883,6 +892,46 @@ class Create_UI(Gtk.Window):
 
         self.canvas_en.draw()
 
+        
+    def click_btn_show_ref_spk(self, btn):
+        num_act_btns, btn_ind = self.count_act_check_btns_en()
+        if num_act_btns == 1:
+            if btn.get_label() == "Show Ref":
+                isotope = self.combobox_isotopes.get_active_text()
+
+                try:
+                    ref_spk = Ref_spk()
+                    ref_spk.set_path(refspk_fname)
+                    ref_spk.read_spk()
+                    ref_spk.fill_isotope_trans(isotope)
+                    
+                    y_min, y_max = self.ax_en.get_ylim()
+                    print("y_min = {}, y_max = {}".format(y_min, y_max))
+
+                    self.vlines_transitions = []
+                    for trans in ref_spk.transitions:
+                        ch = self.calibr_en.keV_to_ch(btn_ind, trans[0])
+                        self.vlines_transitions.append(self.ax_en.vlines(ch,
+                                                                         0.02 * y_max,
+                                                                         0.98 * trans[1] * y_max,
+                                                                         colors = "black",
+                                                                         linestyles = "dotted",
+                                                                         linewidths = 2))
+                    
+                    btn.set_label("Hide Ref")
+                    self.canvas_en.draw()
+                    return
+                except KeyError:
+                    return
+
+        if btn.get_label() == "Hide Ref":
+            for line in self.vlines_transitions:
+                line.remove()
+                del line
+
+            btn.set_label("Show Ref")        
+            self.canvas_en.draw()
+                
 
     def count_act_check_btns_t(self):
         num_act_btns = 0
