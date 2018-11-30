@@ -128,6 +128,72 @@ class Analyze_peak():
 
     
     def calc_fwhm(self):
+        arr = self.en_spk[self.x_l:self.x_r]
+        mean, _ = self.calc_mean()
+        
+        while True:
+            max_index = np.argmax(arr)
+            print(arr[max_index])
+            #IF BAD PICK exit
+            if arr[max_index] == 0:
+                return (0, 0)
+            #if |MAX - MEAN| too large find another MAX
+            if abs(max_index - (mean-self.x_l)) > 10:
+                arr[max_index] = 0
+            else:
+                break
+        
+        more_than_max2 = np.where(arr > arr[max_index]/2)[0]
+        print(more_than_max2)
+        
+        #find FWHM_left bound and FWHM_right bound
+        yp_l = [more_than_max2[0]-1, more_than_max2[0]]
+        xp_l = [arr[y] for y in yp_l]
+        k_fwhm_l, b_fwhm_l = np.polyfit(xp_l, yp_l, 1)
+        fwhm_l = k_fwhm_l * arr[max_index]/2 + b_fwhm_l
+        yp_r = [more_than_max2[-1], more_than_max2[-1]+1]
+        xp_r = [arr[y] for y in yp_r]
+        k_fwhm_r, b_fwhm_r = np.polyfit(xp_r, yp_r, 1)
+        fwhm_r = k_fwhm_r * arr[max_index]/2 + b_fwhm_r
+        fwhm = fwhm_r-fwhm_l
+        self.fwhm_y = arr[max_index]/2.0
+
+        #set vars for plots
+        self.fwhm_ch_l = k_fwhm_l * self.fwhm_y + b_fwhm_l#(self.fwhm_y / 2 - b_fwhm_l) / k_fwhm_l
+        self.fwhm_ch_r = k_fwhm_r * self.fwhm_y + b_fwhm_r#(self.fwhm_y / 2 - b_fwhm_r) / k_fwhm_r
+        print("fwhm_ch_l = {}, fwhm_ch_r = {}".format(self.fwhm_ch_l, self.fwhm_ch_r))
+        print(yp_l, xp_l)
+        print("k, b = {}, {}".format(k_fwhm_l, b_fwhm_l))
+        print("by hand k, b = {}, {}".format((yp_l[0] - yp_l[1]) / (xp_l[0] - xp_l[1]),
+                                             yp_l[0] - (yp_l[0] - yp_l[1]) / (xp_l[0] - xp_l[1]) * xp_l[0]))
+        print(yp_r, xp_r)
+        print("k, b = {}, {}".format(k_fwhm_r, b_fwhm_r))
+        print("by hand k, b = {}, {}".format((yp_r[0] - yp_r[1]) / (xp_r[0] - xp_r[1]),
+                                             yp_r[0] - (yp_r[0] - yp_r[1]) / (xp_r[0] - xp_r[1]) * xp_r[0]))
+        
+        #FWHM Error
+        fwhm_err_l, fwhm_err_r = np.zeros(2), np.zeros(2)
+        xp_l_err = [x+(abs(x))**0.5 for x in xp_l]
+        k, b = np.polyfit(xp_l_err, yp_l, 1)
+        fwhm_err_l[0] = k * arr[max_index]/2 + b
+        xp_l_err = [x-(abs(x))**0.5 for x in xp_l]
+        k, b = np.polyfit(xp_l_err, yp_l, 1)
+        fwhm_err_l[1] = k * arr[max_index]/2 + b
+        print(fwhm_l, fwhm_err_l[0], fwhm_err_l[1])
+
+        xp_r_err = [x+(x)**0.5 for x in xp_r]
+        k, b = np.polyfit(xp_r_err, yp_r, 1)
+        fwhm_err_r[0] = k * arr[max_index]/2 + b
+        xp_r_err = [x-(x)**0.5 for x in xp_r]
+        k, b = np.polyfit(xp_r_err, yp_r, 1)
+        fwhm_err_r[1] = k * arr[max_index]/2 + b
+        print(fwhm_r, fwhm_err_r[0], fwhm_err_r[1])
+
+        fwhm_err = ((fwhm_err_l[0]-fwhm_err_l[1])**2 + (fwhm_err_r[0]-fwhm_err_r[1])**2)**0.5
+
+        return fwhm, fwhm_err
+    """    
+        eps = 1.0e-6
         max_en_spk = max(self.en_spk[self.x_l:self.x_r])
 
         try:
@@ -142,7 +208,7 @@ class Analyze_peak():
         k_l = self.en_spk[self.x_l + i] - self.en_spk[self.x_l + i - 1]
         b_l = self.en_spk[self.x_l + i] - k_l * i
 
-        i_r_shift = 20
+        i_r_shift = 4
         try:
             i = i + i_r_shift + np.where(self.en_spk[self.x_l + i + i_r_shift:self.x_r] <= max_en_spk / 2)[0][0]
         except IndexError:
@@ -155,9 +221,10 @@ class Analyze_peak():
         k_r = self.en_spk[self.x_l + i] - self.en_spk[self.x_l + i - 1]
         b_r = self.en_spk[self.x_l + i] - k_r * i
 
+        logging.info("k_l = {:e}, k_r = {:e}".format(k_l, k_r))
         self.fwhm_ch_l = (max_en_spk / 2 - b_l) / k_l
         self.fwhm_ch_r = (max_en_spk / 2 - b_r) / k_r
-
+            
         self.fwhm_y = max_en_spk / 2 + self.bg[np.where(self.en_spk[self.x_l:self.x_r] == max_en_spk)[0][0]]
 
         fwhm = self.fwhm_ch_r - self.fwhm_ch_l
@@ -166,25 +233,36 @@ class Analyze_peak():
         
         k, b = np.polyfit(xp_l_err, yp_l, 1)
         #fwhm_err_l[0] = k * max_en_spk / 2 + b
-        fwhm_err_l[0] = (max_en_spk / 2 - b ) / k
+        try:
+            fwhm_err_l[0] = (max_en_spk / 2 - b ) / k 
+        except RuntimeWarning:
+            fwhm_err_l[0] = 0.0
         xp_l_err = [x - np.sqrt(abs(x)) for x in xp_l]
         k, b = np.polyfit(xp_l_err, yp_l, 1)
         #fwhm_err_l[1] = k * max_en_spk / 2 + b
-        fwhm_err_l[1] = (max_en_spk / 2 - b ) / k
+        try:
+            fwhm_err_l[1] = (max_en_spk / 2 - b ) / k
+        except RuntimeWarning:
+            fwhm_err_l[1] = 0.0
         logging.info("fwhm_err_l0 = {:.1f}, fwhm_err_l1 = {:.1f}".format(fwhm_err_l[0], fwhm_err_l[1]))
             
         k, b = np.polyfit(xp_r_err, yp_r, 1)
         #fwhm_err_r[0] = k * max_en_spk / 2 + b
-        fwhm_err_r[0] = (max_en_spk / 2 - b ) / k
+        try:
+            fwhm_err_r[0] = (max_en_spk / 2 - b ) / k
+        except RuntimeWarning:
+            fwhm_err_r[0] = 0.0
         xp_r_err = [x - np.sqrt(x) for x in xp_r]
         k, b = np.polyfit(xp_r_err, yp_r, 1)
         #fwhm_err_r[1] = k * max_en_spk / 2 + b
-        fwhm_err_r[1] = (max_en_spk / 2 - b ) / k
+        try:
+            fwhm_err_r[1] = (max_en_spk / 2 - b ) / k
+        except RuntimeWarning:
+            fwhm_err_r[1] = 0.0
         logging.info("fwhm_err_r0 = {:.1f}, fwhm_err_r1 = {:.1f}".format(fwhm_err_r[0], fwhm_err_r[1]))
         
         fwhm_err = np.sqrt((fwhm_err_l[0] - fwhm_err_l[1])**2 + (fwhm_err_r[0] - fwhm_err_r[1])**2)
-        
-        return fwhm, fwhm_err
+    """
     
 
     def calc_resol(self):
@@ -577,6 +655,7 @@ class Create_UI(Gtk.Window):
         btn_show_wins_en.connect("clicked", self.click_btn_en_show_wins)
         self.combobox_isotopes = Gtk.ComboBoxText()
         self.combobox_isotopes.append_text("44Ti")
+        self.combobox_isotopes.append_text("60Co")
         self.combobox_isotopes.append_text("111Cd")
         self.combobox_isotopes.append_text("181Ta")
         self.combobox_isotopes.set_active(0)
