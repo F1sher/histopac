@@ -418,7 +418,7 @@ class Calc_view_en():
         
         
     def set_integral(self, integral_val, integral_err):
-        txt = "Integral: {:.0f}\u00b1{:.0f} k\n".format(integral_val / 1000, integral_err / 1000)
+        txt = "Integral: {:.1f}\u00b1{:.1f} k\n".format(integral_val / 1000, integral_err / 1000)
         self._insert_txt_at_line(txt, self._integral_line)
 
         self._apply_tag_at_line_offset("bold", self._integral_line, len("Integral"))
@@ -426,7 +426,7 @@ class Calc_view_en():
 
         
     def set_area(self, area_val, area_err):
-        txt = "Area: {:.0f}\u00b1{:.0f} k\n".format(area_val / 1000, area_err / 1000)
+        txt = "Area: {:.1f}\u00b1{:.1f} k\n".format(area_val / 1000, area_err / 1000)
         self._insert_txt_at_line(txt, self._area_line)
         
         self._apply_tag_at_line_offset("bold", self._area_line, len("Area"))
