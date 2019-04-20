@@ -33,7 +33,7 @@ histo_t_fnames = ["TIME1.SPK", "TIME2.SPK", "TIME3.SPK", "TIME4.SPK",
                   "TIME5.SPK", "TIME6.SPK", "TIME7.SPK", "TIME8.SPK",
                   "TIME9.SPK", "TIME10.SPK", "TIME11.SPK", "TIME12.SPK"]
 
-ini_fname = "/home/das/job/histopac/ini.json"
+basic_ini_fname = "/home/das/job/histopac/ini.json"
 refspk_fname = "./ref_transitions.json"
 ini = None
 
@@ -54,8 +54,11 @@ def main(dir_name):
                         level=logging.INFO)
 
     global ini
-    ini = parse_ini(ini_fname)
-    cfg = parse_cfg(ini["cfg_path"])
+    ini = parse_ini(basic_ini_fname)
+    if ini["cfg_path"] == -1:
+        cfg = parse_cfg(dir_name + "cfg.json" if dir_name[-1] == "/" else dir_name + "/cfg.json")
+    else:
+        cfg = parse_cfg(ini["cfg_path"])
     
     ui = Create_UI(dir_name)
     
@@ -654,10 +657,12 @@ class Create_UI(Gtk.Window):
         btn_show_wins_en = Gtk.Button("Show Wins")
         btn_show_wins_en.connect("clicked", self.click_btn_en_show_wins)
         self.combobox_isotopes = Gtk.ComboBoxText()
+        self.combobox_isotopes.append_text("40K")
         self.combobox_isotopes.append_text("44Ti")
         self.combobox_isotopes.append_text("60Co")
         self.combobox_isotopes.append_text("111Cd")
         self.combobox_isotopes.append_text("181Ta")
+        self.combobox_isotopes.append_text("207Bi")
         self.combobox_isotopes.set_active(0)
         btn_show_ref_spk = Gtk.Button("Show Ref")
         btn_show_ref_spk.connect("clicked", self.click_btn_show_ref_spk)
