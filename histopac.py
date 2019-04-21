@@ -960,13 +960,15 @@ class Create_UI(Gtk.Window):
                                                   self.y_en_max0,
                                                   lwin_r - lwin_l,
                                                   color = "#f4be41",
-                                                  alpha = 0.4)
+                                                  alpha = 0.4,
+                                                  align = "edge")
             
                 self.lines_rwin, = self.ax_en.bar(rwin_l,
                                                   self.y_en_max0,
                                                   rwin_r - rwin_l,
                                                   color = "#d3f441",
-                                                  alpha = 0.4)
+                                                  alpha = 0.4,
+                                                  align = "edge")
                 
         else:
             btn.set_label("Show Wins")
