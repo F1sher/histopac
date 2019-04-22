@@ -955,18 +955,23 @@ class Create_UI(Gtk.Window):
                 
                 lwin_l, lwin_r = self.cfg["en_range"][btn_ind][0], self.cfg["en_range"][btn_ind][1]
                 rwin_l, rwin_r = self.cfg["en_range"][btn_ind][2], self.cfg["en_range"][btn_ind][3]
+
+                print("lwins = {:.1f}, {:.1f}".format(lwin_l, lwin_r))
+                print("rwins = {:.1f}, {:.1f}".format(rwin_l, rwin_r))
                 
                 self.lines_lwin, = self.ax_en.bar(lwin_l,
                                                   self.y_en_max0,
                                                   lwin_r - lwin_l,
                                                   color = "#f4be41",
-                                                  alpha = 0.4)
+                                                  alpha = 0.4,
+                                                  align="edge")
             
                 self.lines_rwin, = self.ax_en.bar(rwin_l,
                                                   self.y_en_max0,
                                                   rwin_r - rwin_l,
                                                   color = "#d3f441",
-                                                  alpha = 0.4)
+                                                  alpha = 0.4,
+                                                  align="edge")
                 
         else:
             btn.set_label("Show Wins")
