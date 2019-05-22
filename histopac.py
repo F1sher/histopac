@@ -33,7 +33,7 @@ histo_t_fnames = ["TIME1.SPK", "TIME2.SPK", "TIME3.SPK", "TIME4.SPK",
                   "TIME5.SPK", "TIME6.SPK", "TIME7.SPK", "TIME8.SPK",
                   "TIME9.SPK", "TIME10.SPK", "TIME11.SPK", "TIME12.SPK"]
 
-basic_ini_fname = "/home/das/job/histopac/ini.json"
+basic_ini_fname = "./ini.json"
 refspk_fname = "./ref_transitions.json"
 ini = None
 
@@ -55,12 +55,25 @@ def main(dir_name):
 
     global ini
     ini = parse_ini(basic_ini_fname)
-    if ini["cfg_path"] == -1:
-        cfg = parse_cfg(dir_name + "cfg.json" if dir_name[-1] == "/" else dir_name + "/cfg.json")
-    else:
-        cfg = parse_cfg(ini["cfg_path"])
-    
-    ui = Create_UI(dir_name)
+    try:
+        if ini["cfg_path"] == -1:
+            cfg = parse_cfg(dir_name + "cfg.json" if dir_name[-1] == "/" else dir_name + "/cfg.json")
+        else:
+            cfg = parse_cfg(ini["cfg_path"])
+    except FileNotFoundError:
+        cfg = {}
+        print("cfg file Not Found in folder with spk")
+
+    try:
+        if ini["const_path"] == -1:
+            consts = parse_constants(dir_name + "constants.json" if dir_name[-1] == "/" else dir_name + "/constants.json")
+        else:
+            consts = parse_constants(ini["const_path"])
+    except FileNotFoundError:
+        consts = {"T_SCALE": [1.0, 1.0]}
+        print("const file Not Found in folder with spk")
+        
+    ui = Create_UI(dir_name, consts)
     
     en_spk, t_spk = get_histos_from_folder(dir_name)
 
@@ -571,9 +584,12 @@ class Analyze_exp_t():
     
         
 class Create_UI(Gtk.Window):
-    def __init__(self, dir_name="-"):
+    def __init__(self, dir_name="-", consts={}):
         ###Calibration energy spectra
         self.calibr_en = Calibr_en()
+
+        ###Consts (time to ch)
+        self.consts = consts
         
         Gtk.Window.__init__(self)
         self.set_title(path.basename(path.abspath(dir_name)) + " - histopac")
@@ -763,7 +779,14 @@ class Create_UI(Gtk.Window):
         self.entry_ptr_t.editable = False
         vbox_ptr_t.pack_start(self.entry_ptr_t, False, False, 0)
         grid_t.attach(vbox_ptr_t, 0, 3, 1, 1)
-        
+
+        ns_per_ch = 8.0 / ((1.0 + self.consts["T_SCALE"][1]) /
+                             (2.0 * self.consts["T_SCALE"][1] / histo_size) - 0.5 * histo_size)
+        if ns_per_ch > 1.0:
+            grid_t.attach(Gtk.Label("{:.1f} ns/ch".format(ns_per_ch)), 0, 4, 1, 1)
+        else:
+            grid_t.attach(Gtk.Label("{:.0f} ps/ch".format(1e3 * ns_per_ch)), 0, 4, 1, 1)
+            
         hbox_t.pack_start(vbox_mp_t, True, True, 0)
         hbox_t.pack_start(grid_t, False, False, 5)
 
@@ -1159,6 +1182,9 @@ class Create_UI(Gtk.Window):
     def set_cfg(self, cfg):
         self.cfg = cfg
 
+    def set_consts(self, consts):
+        self.consts = consts
+
         
     def plot_histo_name(self, name):
         if name in gui_params.en:
@@ -1360,7 +1386,6 @@ def parse_cfg(path_cfg_file):
     return cfg
 
 
-
 def save_cfg(cfg, path_cfg_file):
     with open(path_cfg_file, 'w') as cfg_file:
         def dict_to_true_cfg_str(d):
@@ -1381,13 +1406,25 @@ def save_cfg(cfg, path_cfg_file):
         cfg_file.write(dict_to_true_cfg_str(cfg))
 
 
-
 def new_save_cfg(cfg, path_cfg_file):
     with open(path_cfg_file, 'w') as cfg_file:
         json.dump(cfg,
                   cfg_file,
                   indent="    ")     
 
+
+def parse_constants(path_constants_file):
+    cnst = {}
+    
+    with open(path_constants_file, 'r') as const_file:
+        #if the size of cfg.json will be larger than 2048 bytes, please change it
+        consts = const_file.read(2048)
+        consts_vals = json.loads(consts)
+        cnst["T_SCALE"] = consts_vals["T_SCALE"]
+
+    return cnst
+
+        
 if __name__ == "__main__":
     main()
 
