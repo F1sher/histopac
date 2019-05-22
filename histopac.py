@@ -783,9 +783,16 @@ class Create_UI(Gtk.Window):
         ns_per_ch = 8.0 / ((1.0 + self.consts["T_SCALE"][1]) /
                              (2.0 * self.consts["T_SCALE"][1] / histo_size) - 0.5 * histo_size)
         if ns_per_ch > 1.0:
-            grid_t.attach(Gtk.Label("{:.1f} ns/ch".format(ns_per_ch)), 0, 4, 1, 1)
+            lbl_ns_per_ch = Gtk.Label()
+            lbl_ns_per_ch.set_use_markup(True)
+            lbl_ns_per_ch.set_markup("<span font='20'>{:.1f} ns/ch</span>".
+                                     format(ns_per_ch))
         else:
-            grid_t.attach(Gtk.Label("{:.0f} ps/ch".format(1e3 * ns_per_ch)), 0, 4, 1, 1)
+            lbl_ns_per_ch = Gtk.Label()
+            lbl_ns_per_ch.set_use_markup(True)
+            lbl_ns_per_ch.set_markup("<span font='20'>{:.0f} ps/ch</span>".
+                                     format(1e3 * ns_per_ch))
+        grid_t.attach(lbl_ns_per_ch, 0, 4, 1, 1)
             
         hbox_t.pack_start(vbox_mp_t, True, True, 0)
         hbox_t.pack_start(grid_t, False, False, 5)
