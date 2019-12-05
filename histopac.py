@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 
 import click
 import logging
@@ -675,6 +675,8 @@ class Create_UI(Gtk.Window):
         self.combobox_isotopes = Gtk.ComboBoxText()
         self.combobox_isotopes.append_text("40K")
         self.combobox_isotopes.append_text("44Ti")
+        self.combobox_isotopes.append_text("46Sc")
+        self.combobox_isotopes.append_text("48V")
         self.combobox_isotopes.append_text("60Co")
         self.combobox_isotopes.append_text("111Cd")
         self.combobox_isotopes.append_text("181Ta")
