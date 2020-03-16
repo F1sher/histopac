@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 
 import click
 import logging
@@ -750,6 +750,21 @@ class Create_UI(Gtk.Window):
             self.check_btn_t[-1].set_active(True)
             self.check_btn_t[-1].connect("toggled", self.toggle_check_btn_t, gui_params.t[i])
             grid_check_btn_t.attach(hbox, i % 2, i / 2, 1, 1)
+
+        for i in range(t_spk_num // 2):
+            hbox = Gtk.Box()
+            check_btn = Gtk.CheckButton()
+            hbox.pack_start(check_btn, False, False, 0)
+            lbl = Gtk.Label()
+            lbl.set_markup("<span fgcolor='{:s}'>{:s}</span>".
+                           format(gui_params.t_spk_colors[2*i], gui_params.t_sum[i]))
+            hbox.pack_start(lbl, False, False, 0)
+
+            self.check_btn_t.append(check_btn)
+            self.check_btn_t[-1].set_active(False)
+            self.check_btn_t[-1].connect("toggled", self.toggle_check_btn_t, gui_params.t_sum[i])
+            grid_check_btn_t.attach(hbox, 2, i, 1, 1)
+            
                         
         vbox_t_spk_chooser.pack_start(grid_check_btn_t, False, False, 0)
 
@@ -769,12 +784,15 @@ class Create_UI(Gtk.Window):
         btn_clr_analyze_t.connect("clicked", self.click_btn_clr_analyze_t)
         btn_log_scale_t = Gtk.Button("Log Scale")
         btn_log_scale_t.connect("clicked", self.click_btn_log_scale_t)
+        btn_sum_t = Gtk.Button("Sum")
+        btn_sum_t.connect("clicked", self.click_btn_sum_t)
         
         grid_btns_cntrl.attach(btn_analyze_peak_t, 0, 0, 1, 1)
         grid_btns_cntrl.attach(btn_analyze_exp_t, 1, 0, 1, 1)
         grid_btns_cntrl.attach(btn_clr_analyze_t, 0, 1, 1, 1)
         grid_btns_cntrl.attach(btn_log_scale_t, 0, 2, 1, 1)
-
+        grid_btns_cntrl.attach(btn_sum_t, 1, 2, 1, 1)
+                               
         grid_t.attach(grid_btns_cntrl, 0, 2, 1, 1)
 
         vbox_ptr_t = Gtk.Box(orientation = Gtk.Orientation.VERTICAL)
@@ -1054,11 +1072,11 @@ class Create_UI(Gtk.Window):
 
     def count_act_check_btns_t(self):
         num_act_btns = 0
-        btn_ind = -1
+        btn_ind = []
         for i in range(t_spk_num):
             if self.check_btn_t[i].get_active():
                 num_act_btns += 1 
-                btn_ind = i
+                btn_ind.append(i)
 
         return num_act_btns, btn_ind
         
@@ -1142,7 +1160,6 @@ class Create_UI(Gtk.Window):
     def click_btn_analyze_exp_t(self, btn):
         logging.info("Click btn analyze exp")
         num_act_btns, btn_ind = self.count_act_check_btns_t()
-
         try:
             self._clr_analyze_t()
         except AttributeError:
@@ -1183,15 +1200,27 @@ class Create_UI(Gtk.Window):
             self.ax_t.set_yscale("linear")
 
         self.canvas_t.draw()
+
         
-        
+    def click_btn_sum_t(self, btn):
+        num_btn, ind_btn = self.count_act_check_btns_t()
+        if num_btn == 2:
+            print("Exactly 2 btns actives")
+            print(ind_btn)
+            sum_spk_t = np.array(self.t_spk[ind_btn[0]]) + np.array(self.t_spk[ind_btn[1]])
+            self.ax_t.plot(sum_spk_t)
+            self.canvas_t.draw()
+
+            
     def set_histos(self, en_spk, t_spk):
         self.en_spk = en_spk
         self.t_spk = t_spk
 
+        
     def set_cfg(self, cfg):
         self.cfg = cfg
 
+        
     def set_consts(self, consts):
         self.consts = consts
 
@@ -1329,6 +1358,8 @@ class Create_UI(Gtk.Window):
                 self.plot_histo_name(name)
             else:
                 self.clr_histo_name(name)
+        elif name in gui_params.t_sum:
+            self.click_btn_sum_t(None)
                 
 
     def hide_all_spk_t(self):
