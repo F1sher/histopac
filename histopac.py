@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python3
 
 import click
 import logging
@@ -90,7 +90,7 @@ def main(dir_name):
     
 class Analyze_peak():
     def __init__(self, en_spk, x_l, x_r):
-        self.en_spk = np.array(en_spk)
+        self.en_spk = np.array(en_spk, dtype=np.float64)
         self.x_l = x_l
         self.x_r = x_r
 
@@ -679,6 +679,7 @@ class Create_UI(Gtk.Window):
         self.combobox_isotopes.append_text("48V")
         self.combobox_isotopes.append_text("60Co")
         self.combobox_isotopes.append_text("111Cd")
+        self.combobox_isotopes.append_text("175Yb")
         self.combobox_isotopes.append_text("181Ta")
         self.combobox_isotopes.append_text("207Bi")
         self.combobox_isotopes.set_active(0)
