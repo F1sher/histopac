@@ -1072,11 +1072,11 @@ class Create_UI(Gtk.Window):
 
     def count_act_check_btns_t(self):
         num_act_btns = 0
-        btn_ind = []
+        btn_ind = -1
         for i in range(t_spk_num):
             if self.check_btn_t[i].get_active():
                 num_act_btns += 1 
-                btn_ind.append(i)
+                btn_ind = i
 
         return num_act_btns, btn_ind
         
