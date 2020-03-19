@@ -24,6 +24,7 @@ from ref_spk import Ref_spk
 
 det_num = 4
 t_spk_num = 12
+tsum_spk_num = t_spk_num // 2
 
 histo_size = 4096 #(chanels)
 histo_finisize = 512
@@ -352,6 +353,19 @@ class Calibr_en():
             f.write(data)
             '''
 
+
+class Calibr_t():
+    def __init__(self, T_SCALE):
+        self.t_scale = T_SCALE
+        self.ns_per_ch = 8.0 / ((1.0 + self.t_scale[1]) /
+                                (2.0 * self.t_scale[1] / histo_size) - 0.5 * histo_size)
+
+    def ch_to_ns(self, ch):
+        return ch * self.ns_per_ch
+
+    def ns_to_ch(self, ns):
+        return ns / self.ns_per_ch
+        
             
 class Dialog_calibr_en(Gtk.Dialog):
     def __init__(self, parent, calibr_en):
@@ -466,10 +480,10 @@ class Calc_view_en():
 
 
     def set_resol(self, resol_val):
-        txt = "Resolution: {:.1f} %\n".format(100.0*resol_val)
+        txt = "Resolution (FWHM): {:.1f} %\n".format(100.0*resol_val)
         self._insert_txt_at_line(txt, self._resol_line)
 
-        self._apply_tag_at_line_offset("bold", self._resol_line, len("Resolution"))
+        self._apply_tag_at_line_offset("bold", self._resol_line, len("Resolution (FWHM)"))
         self._apply_tag_at_line_offset("large_fontsize", self._resol_line, len(txt) - 1)
         
         
@@ -741,7 +755,7 @@ class Create_UI(Gtk.Window):
             check_btn = Gtk.CheckButton()
             hbox.pack_start(check_btn, False, False, 0)
             lbl = Gtk.Label()
-            lbl.set_markup("<span fgcolor='{:s}'>{:s}</span>".
+            lbl.set_markup("<span fgcolor='{:s}'>{:s}</span> ".
                            format(gui_params.t_spk_colors[i], gui_params.t[i]))
             hbox.pack_start(lbl, False, False, 0)
 
@@ -751,18 +765,19 @@ class Create_UI(Gtk.Window):
             self.check_btn_t[-1].connect("toggled", self.toggle_check_btn_t, gui_params.t[i])
             grid_check_btn_t.attach(hbox, i % 2, i / 2, 1, 1)
 
+        self.check_btn_tsum = []
         for i in range(t_spk_num // 2):
             hbox = Gtk.Box()
             check_btn = Gtk.CheckButton()
             hbox.pack_start(check_btn, False, False, 0)
             lbl = Gtk.Label()
             lbl.set_markup("<span fgcolor='{:s}'>{:s}</span>".
-                           format(gui_params.t_spk_colors[2*i], gui_params.t_sum[i]))
+                           format(gui_params.t_spk_colors[2*i], gui_params.tsum[i]))
             hbox.pack_start(lbl, False, False, 0)
 
-            self.check_btn_t.append(check_btn)
-            self.check_btn_t[-1].set_active(False)
-            self.check_btn_t[-1].connect("toggled", self.toggle_check_btn_t, gui_params.t_sum[i])
+            self.check_btn_tsum.append(check_btn)
+            self.check_btn_tsum[-1].set_active(False)
+            self.check_btn_tsum[-1].connect("toggled", self.toggle_check_btn_t, gui_params.tsum[i])
             grid_check_btn_t.attach(hbox, 2, i, 1, 1)
             
                         
@@ -801,18 +816,18 @@ class Create_UI(Gtk.Window):
         vbox_ptr_t.pack_start(self.entry_ptr_t, False, False, 0)
         grid_t.attach(vbox_ptr_t, 0, 3, 1, 1)
 
-        ns_per_ch = 8.0 / ((1.0 + self.consts["T_SCALE"][1]) /
-                             (2.0 * self.consts["T_SCALE"][1] / histo_size) - 0.5 * histo_size)
-        if ns_per_ch > 1.0:
+        self.calibr_t = Calibr_t(self.consts["T_SCALE"])
+        
+        if self.calibr_t.ns_per_ch > 1.0:
             lbl_ns_per_ch = Gtk.Label()
             lbl_ns_per_ch.set_use_markup(True)
-            lbl_ns_per_ch.set_markup("<span font='20'>{:.1f} ns/ch</span>".
-                                     format(ns_per_ch))
+            lbl_ns_per_ch.set_markup("<span font='20'>{:.3f} ns/ch</span>".
+                                     format(self.calibr_t.ns_per_ch))
         else:
             lbl_ns_per_ch = Gtk.Label()
             lbl_ns_per_ch.set_use_markup(True)
-            lbl_ns_per_ch.set_markup("<span font='20'>{:.0f} ps/ch</span>".
-                                     format(1e3 * ns_per_ch))
+            lbl_ns_per_ch.set_markup("<span font='20'>{:.3f} ps/ch</span>".
+                                     format(1e3 * self.calibr_t.ns_per_ch))
         grid_t.attach(lbl_ns_per_ch, 0, 4, 1, 1)
             
         hbox_t.pack_start(vbox_mp_t, True, True, 0)
@@ -1079,28 +1094,50 @@ class Create_UI(Gtk.Window):
                 btn_ind = i
 
         return num_act_btns, btn_ind
-        
+
+    def count_act_check_btns_tsum(self):
+        num_act_btns = 0
+        btn_ind = -1
+        for i in range(tsum_spk_num):
+            if self.check_btn_tsum[i].get_active():
+                num_act_btns += 1 
+                btn_ind = i
+
+        return num_act_btns, btn_ind
+
 
     def motion_mpl_t(self, event):
         txt = ""
         num_act_btns, btn_ind = self.count_act_check_btns_t()
-
         if num_act_btns == 1:
             try:
                 x = int(round(event.xdata))
                 y = self.t_spk[btn_ind][x]
-                txt = "{:d} {:d}".format(x, y)
+                txt = "{:d} ({:.3f} ns) {:d}".format(x, x*self.calibr_t.ns_per_ch, y)
             except TypeError:
                 txt = "Out of range"
-
             self.entry_ptr_t.set_text(txt)
+            return 1
+
+        num_act_btns, btn_ind = self.count_act_check_btns_tsum()
+        if num_act_btns == 1:
+            try:
+                x = int(round(event.xdata))
+                y = self.tsum_spk[btn_ind][x]
+                txt = "{:d} ({:.3f} ns) {:d}".format(x, x*self.calibr_t.ns_per_ch, y)
+            except TypeError:
+                txt = "Out of range"
+            self.entry_ptr_t.set_text(txt)
+            return 1
+
 
     
     def press_btn_mpl_t(self, event):
         r_mouse_btn = 3
-        num_act_btns, btn_ind = self.count_act_check_btns_t()
-
-        if num_act_btns == 1:
+        num_act_btns_t, btn_ind_t = self.count_act_check_btns_t()
+        num_act_btns_tsum, btn_ind_tsum = self.count_act_check_btns_tsum()
+        
+        if (num_act_btns_t == 1 and num_act_btns_tsum == 0) or (num_act_btns_t == 0 and num_act_btns_tsum == 1):
             if event.button == r_mouse_btn:
                 try:
                     self.vlines_t
@@ -1113,7 +1150,10 @@ class Create_UI(Gtk.Window):
                     self.txt_vlines_t = []
                     
                 x = int(round(event.xdata))
-                y = self.t_spk[btn_ind][x]
+                if num_act_btns_t:
+                    y = self.t_spk[btn_ind_t][x]
+                else:
+                    y = self.tsum_spk[btn_ind_tsum][x]
 
                 self.x_vlines_t.append(x)
                 self.vlines_t.append(self.ax_t.vlines(x = x,
@@ -1124,28 +1164,35 @@ class Create_UI(Gtk.Window):
                                                           y = y,
                                                           s = "{:.0f}".format(x),
                                                           rotation = 90))
-                
                 self.canvas_t.draw()
                     
         
     def click_btn_analyze_peak_t(self, btn):
         logging.info("Click btn analyze peak")
-        num_act_btns, btn_ind = self.count_act_check_btns_t()
+        num_act_btns_t, btn_ind_t = self.count_act_check_btns_t()
+        num_act_btns_tsum, btn_ind_tsum = self.count_act_check_btns_tsum()
         
         try:
             self._clr_analyze_t()
         except AttributeError:
             logging.error("AttributeError in click_btn_analyze_exp_t()")
-
-        if num_act_btns == 1:
+            
+        if (num_act_btns_t == 1 and num_act_btns_tsum == 0) or (num_act_btns_t == 0 and num_act_btns_tsum == 1):
             x_l = min(self.x_vlines_t)
             x_r = max(self.x_vlines_t)
-            
-            analyze = Analyze_peak(self.t_spk[btn_ind], x_l, x_r)
-            self.analyze_curve_peak_t = self.ax_t.fill_between(np.arange(x_l, x_r+1),
-                                                               self.t_spk[btn_ind][x_l:x_r+1],
+
+            if num_act_btns_t:
+                analyze = Analyze_peak(self.t_spk[btn_ind_t], x_l, x_r)
+                self.analyze_curve_peak_t = self.ax_t.fill_between(np.arange(x_l, x_r+1),
+                                                               self.t_spk[btn_ind_t][x_l:x_r+1],
                                                                color="#ecff00")
+            else:
+                analyze = Analyze_peak(self.tsum_spk[btn_ind_tsum], x_l, x_r)
+                self.analyze_curve_peak_t = self.ax_t.fill_between(np.arange(x_l, x_r+1),
+                                                                self.tsum_spk[btn_ind_tsum][x_l:x_r+1],
+                                                                color="#ecff00")
             
+                
             self.canvas_t.draw()
 
             def ch_to_phys(ch):
@@ -1159,17 +1206,21 @@ class Create_UI(Gtk.Window):
         
     def click_btn_analyze_exp_t(self, btn):
         logging.info("Click btn analyze exp")
-        num_act_btns, btn_ind = self.count_act_check_btns_t()
+        num_act_btns_t, btn_ind_t = self.count_act_check_btns_t()
+        num_act_btns_tsum, btn_ind_tsum = self.count_act_check_btns_tsum()
         try:
             self._clr_analyze_t()
         except AttributeError:
             logging.error("AttributeError in click_btn_analyze_exp_t()")
             
-        if num_act_btns == 1:
+        if (num_act_btns_t == 1 and num_act_btns_tsum == 0) or (num_act_btns_t == 0 and num_act_btns_tsum == 1):
             x_l = min(self.x_vlines_t)
             x_r = max(self.x_vlines_t)
 
-            analyze = Analyze_exp_t(self.t_spk[btn_ind], x_l, x_r)
+            if num_act_btns_t:
+                analyze = Analyze_exp_t(self.t_spk[btn_ind_t], x_l, x_r)
+            else:
+                analyze = Analyze_exp_t(self.tsum_spk[btn_ind_tsum], x_l, x_r)
             self.analyze_curve_exp_t = self.ax_t.plot(np.arange(analyze.x_l, analyze.x_r),
                                                       analyze.curve_exp,
                                                       c="#ecff00",
@@ -1215,6 +1266,9 @@ class Create_UI(Gtk.Window):
     def set_histos(self, en_spk, t_spk):
         self.en_spk = en_spk
         self.t_spk = t_spk
+        self.tsum_spk = []
+        for i in range(tsum_spk_num):
+            self.tsum_spk.append(np.array(t_spk[2*i]) + np.array(t_spk[2*i+1]))
 
         
     def set_cfg(self, cfg):
@@ -1233,6 +1287,11 @@ class Create_UI(Gtk.Window):
         elif name in gui_params.t:
             ind = gui_params.t.index(name)
             self.t_lines[ind].set_ydata(self.t_spk[ind])
+            self.canvas_t.draw()
+        elif name in gui_params.tsum:
+            ind = gui_params.tsum.index(name)
+            tsum = np.array(self.t_spk[2*ind]) + np.array(self.t_spk[2*ind+1])
+            self.tsum_lines[ind].set_ydata(tsum)
             self.canvas_t.draw()
             
     def clr_histo_name(self, name):
@@ -1254,12 +1313,20 @@ class Create_UI(Gtk.Window):
             if btn.get_active() is False:
                 self.t_lines[ind].set_ydata(y_zeros)
 
+        for n in gui_params.tsum:
+            ind = gui_params.tsum.index(n)
+            btn = self.check_btn_tsum[ind]
+
+            if btn.get_active() is False:
+                self.tsum_lines[ind].set_ydata(y_zeros)
+                
         self.canvas_t.draw()
 
         
     def plot_all_histos(self):
         self.en_lines = []
         self.t_lines = []
+        self.tsum_lines = []
         x = range(histo_size)
         
         for i in range(det_num):
@@ -1273,6 +1340,11 @@ class Create_UI(Gtk.Window):
             self.t_lines.append( self.ax_t.plot(x, self.t_spk[i], marker="o",
                                                 ms=5, mew=0,
                                                 color=gui_params.t_spk_mpl_colors[i], lw=0)[0] )
+        for i in range(tsum_spk_num):
+            self.tsum_lines.append( self.ax_t.plot(x, self.tsum_spk[i], marker="o",
+                                                ms=5, mew=0,
+                                                color=gui_params.t_spk_mpl_colors[2*i], lw=0)[0] )
+
         self.set_lim_vals_t(0)
         
         self.canvas_t.draw()
@@ -1358,15 +1430,22 @@ class Create_UI(Gtk.Window):
                 self.plot_histo_name(name)
             else:
                 self.clr_histo_name(name)
-        elif name in gui_params.t_sum:
-            self.click_btn_sum_t(None)
+        elif name in gui_params.tsum:
+            ind = gui_params.tsum.index(name)
+            btn = self.check_btn_tsum[ind]
+            if btn.get_active():
+                self.plot_histo_name(name)
+            else:
+                self.clr_histo_name(name)
                 
 
     def hide_all_spk_t(self):
         for i in range(t_spk_num):
             self.check_btn_t[i].set_active(False)
             self.check_btn_t[i].emit("toggled")
-
+        for i in range(tsum_spk_num):
+            self.check_btn_tsum[i].set_active(False)
+            self.check_btn_tsum[i].emit("toggled")
             
                 
 def get_histos_from_folder(foldername = "./testspk/"):
