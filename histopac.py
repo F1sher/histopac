@@ -304,8 +304,8 @@ class Dialog_calibr_en(Gtk.Dialog):
 
         self.set_default_size(200, 100)
 
-        label_ch = Gtk.Label("Channels:")
-        label_en = Gtk.Label("Energies:")
+        label_ch = Gtk.Label("Channels [ch]:")
+        label_en = Gtk.Label("Energies [keV]:")
         
         self.entry_ch = [Gtk.Entry() for i in range(det_num)]
         self.entry_en = [Gtk.Entry() for i in range(det_num)]
@@ -341,11 +341,12 @@ class Calc_view_en():
         self.large_size_tag = self.buf.create_tag("large_fontsize", size=14*Pango.SCALE)
 
         self._title_line = 0
-        self._integral_line = 1
-        self._area_line = 2
-        self._mean_line = 3
-        self._fwhm_line = 4
-        self._resol_line = 5
+        self._ch_analyze_line = 1
+        self._integral_line = 2
+        self._area_line = 3
+        self._mean_line = 4
+        self._fwhm_line = 5
+        self._resol_line = 6
         
         self.set_title("Analyze results")
         
@@ -356,6 +357,7 @@ class Calc_view_en():
 
     def set_analyze_peak(self, analyze, ch_to_phys):
         self.clr_buf()
+        self.set_edges(analyze.x_l, analyze.x_r)
         self.set_integral(analyze.integral, analyze.integral_err)
         self.set_area(analyze.area, analyze.area_err)
         self.set_mean(analyze.mean, analyze.mean_err, ch_to_phys)
@@ -371,15 +373,20 @@ class Calc_view_en():
 
     def set_title(self, txt):
         self._insert_txt_at_line(txt, self._title_line)
-
         self._apply_tag_at_line_offset("bold", self._title_line, len(txt))
         self._apply_tag_at_line_offset("large_fontsize", self._title_line, len(txt))
+
+
+    def set_edges(self, x_l, x_r):
+        txt = "Edges: {:d} - {:d}\n".format(x_l, x_r)
+        self._insert_txt_at_line(txt, self._ch_analyze_line)
+        self._apply_tag_at_line_offset("bold", self._ch_analyze_line, len("Edges"))
+        self._apply_tag_at_line_offset("large_fontsize", self._ch_analyze_line, len(txt) - 1)
         
         
     def set_integral(self, integral_val, integral_err):
         txt = "Integral: {:.1f}\u00b1{:.1f} k\n".format(integral_val / 1000, integral_err / 1000)
         self._insert_txt_at_line(txt, self._integral_line)
-
         self._apply_tag_at_line_offset("bold", self._integral_line, len("Integral"))
         self._apply_tag_at_line_offset("large_fontsize", self._integral_line, len(txt) - 1)
 
@@ -387,23 +394,20 @@ class Calc_view_en():
     def set_area(self, area_val, area_err):
         txt = "Area: {:.1f}\u00b1{:.1f} k\n".format(area_val / 1000, area_err / 1000)
         self._insert_txt_at_line(txt, self._area_line)
-        
         self._apply_tag_at_line_offset("bold", self._area_line, len("Area"))
         self._apply_tag_at_line_offset("large_fontsize", self._area_line, len(txt) - 1)
         
         
     def set_mean(self, mean_val, mean_err, ch_to_phys):
-        txt = "Position: {:.1f}\u00b1{:.1f} <{:.1f}>\n".format(mean_val, mean_err, ch_to_phys(mean_val))
+        txt = "Position: {:.1f}\u00b1{:.1f} ({:.1f} keV)\n".format(mean_val, mean_err, ch_to_phys(mean_val))
         self._insert_txt_at_line(txt, self._mean_line)
-
         self._apply_tag_at_line_offset("bold", self._mean_line, len("Position"))
         self._apply_tag_at_line_offset("large_fontsize", self._mean_line, len(txt) - 1)
 
 
     def set_fwhm(self, fwhm_val, fwhm_err, ch_to_phys):
-        txt = "FWHM: {:.1f}\u00b1{:.1f} <{:.1f}>\n".format(fwhm_val, fwhm_err, ch_to_phys(fwhm_val))
+        txt = "FWHM: {:.1f}\u00b1{:.1f} ({:.1f} keV)\n".format(fwhm_val, fwhm_err, ch_to_phys(fwhm_val))
         self._insert_txt_at_line(txt, self._fwhm_line)
-
         self._apply_tag_at_line_offset("bold", self._fwhm_line, len("FWHM"))
         self._apply_tag_at_line_offset("large_fontsize", self._fwhm_line, len(txt) - 1)
 
@@ -411,7 +415,6 @@ class Calc_view_en():
     def set_resol(self, resol_val):
         txt = "Resolution (FWHM): {:.1f} %\n".format(100.0*resol_val)
         self._insert_txt_at_line(txt, self._resol_line)
-
         self._apply_tag_at_line_offset("bold", self._resol_line, len("Resolution (FWHM)"))
         self._apply_tag_at_line_offset("large_fontsize", self._resol_line, len(txt) - 1)
         
@@ -829,9 +832,10 @@ class Create_UI(Gtk.Window):
                     if k < (x_r - x_l):
                         hshift = text_hshift[k]
                 self.txt_vlines_en.append(self.ax_en.text(x = x - hshift,
-                                                          y = y,
+                                                          y = 0.9*y,
                                                           s = "{:.0f}".format(x),
-                                                          rotation = 90))
+                                                          rotation = 90,
+                                                          fontsize = 16))
                 
                 self.canvas_en.draw()
         
@@ -1104,7 +1108,7 @@ class Create_UI(Gtk.Window):
                                                         y = 0.9*y,
                                                         s = "{:.0f}".format(x),
                                                         rotation = 90,
-                                                        fontsize=16))
+                                                        fontsize = 16))
                 self.canvas_t.draw()
 
 
