@@ -209,77 +209,6 @@ class Analyze_peak():
         fwhm_err = ((fwhm_err_l[0]-fwhm_err_l[1])**2 + (fwhm_err_r[0]-fwhm_err_r[1])**2)**0.5
 
         return fwhm, fwhm_err
-    """    
-        eps = 1.0e-6
-        max_en_spk = max(self.en_spk[self.x_l:self.x_r])
-
-        try:
-            i = np.where(self.en_spk[self.x_l:self.x_r] >= max_en_spk / 2)[0][0]
-        except IndexError:
-            i = self.x_l
-
-        xp_l = [i - 1, i]
-        xp_l_err = [x + np.sqrt(abs(x)) for x in xp_l]
-        yp_l = [self.en_spk[self.x_l + i - 1], self.en_spk[self.x_l + i]]
-            
-        k_l = self.en_spk[self.x_l + i] - self.en_spk[self.x_l + i - 1]
-        b_l = self.en_spk[self.x_l + i] - k_l * i
-
-        i_r_shift = 4
-        try:
-            i = i + i_r_shift + np.where(self.en_spk[self.x_l + i + i_r_shift:self.x_r] <= max_en_spk / 2)[0][0]
-        except IndexError:
-            i = self.x_r
-
-        xp_r = [i - 1, i]
-        xp_r_err = [x + np.sqrt(abs(x)) for x in xp_r]
-        yp_r = [self.en_spk[self.x_l + i - 1], self.en_spk[self.x_l + i]]
-        
-        k_r = self.en_spk[self.x_l + i] - self.en_spk[self.x_l + i - 1]
-        b_r = self.en_spk[self.x_l + i] - k_r * i
-
-        logging.info("k_l = {:e}, k_r = {:e}".format(k_l, k_r))
-        self.fwhm_ch_l = (max_en_spk / 2 - b_l) / k_l
-        self.fwhm_ch_r = (max_en_spk / 2 - b_r) / k_r
-            
-        self.fwhm_y = max_en_spk / 2 + self.bg[np.where(self.en_spk[self.x_l:self.x_r] == max_en_spk)[0][0]]
-
-        fwhm = self.fwhm_ch_r - self.fwhm_ch_l
-
-        fwhm_err_l, fwhm_err_r = np.zeros(2), np.zeros(2)
-        
-        k, b = np.polyfit(xp_l_err, yp_l, 1)
-        #fwhm_err_l[0] = k * max_en_spk / 2 + b
-        try:
-            fwhm_err_l[0] = (max_en_spk / 2 - b ) / k 
-        except RuntimeWarning:
-            fwhm_err_l[0] = 0.0
-        xp_l_err = [x - np.sqrt(abs(x)) for x in xp_l]
-        k, b = np.polyfit(xp_l_err, yp_l, 1)
-        #fwhm_err_l[1] = k * max_en_spk / 2 + b
-        try:
-            fwhm_err_l[1] = (max_en_spk / 2 - b ) / k
-        except RuntimeWarning:
-            fwhm_err_l[1] = 0.0
-        logging.info("fwhm_err_l0 = {:.1f}, fwhm_err_l1 = {:.1f}".format(fwhm_err_l[0], fwhm_err_l[1]))
-            
-        k, b = np.polyfit(xp_r_err, yp_r, 1)
-        #fwhm_err_r[0] = k * max_en_spk / 2 + b
-        try:
-            fwhm_err_r[0] = (max_en_spk / 2 - b ) / k
-        except RuntimeWarning:
-            fwhm_err_r[0] = 0.0
-        xp_r_err = [x - np.sqrt(x) for x in xp_r]
-        k, b = np.polyfit(xp_r_err, yp_r, 1)
-        #fwhm_err_r[1] = k * max_en_spk / 2 + b
-        try:
-            fwhm_err_r[1] = (max_en_spk / 2 - b ) / k
-        except RuntimeWarning:
-            fwhm_err_r[1] = 0.0
-        logging.info("fwhm_err_r0 = {:.1f}, fwhm_err_r1 = {:.1f}".format(fwhm_err_r[0], fwhm_err_r[1]))
-        
-        fwhm_err = np.sqrt((fwhm_err_l[0] - fwhm_err_l[1])**2 + (fwhm_err_r[0] - fwhm_err_r[1])**2)
-    """
     
 
     def calc_resol(self):
@@ -962,7 +891,7 @@ class Create_UI(Gtk.Window):
             self.analyze_mean_en = self.ax_en.vlines(analyze.mean,
                                                      0,
                                                      self.en_spk[btn_ind][int(analyze.mean)])
-            self.analyze_fwhm_en = self.ax_en.hlines(analyze.fwhm_y,
+            self.analyze_fwhm_en = self.ax_en.hlines(analyze.fwhm_y + np.mean(analyze.bg),
                                                      x_l + analyze.fwhm_ch_l,
                                                      x_l + analyze.fwhm_ch_r)
             
