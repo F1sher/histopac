@@ -1140,14 +1140,25 @@ class Create_UI(Gtk.Window):
             if num_act_btns_t:
                 analyze = Analyze_peak(self.t_spk[btn_ind_t], x_l, x_r)
                 self.analyze_curve_peak_t = self.ax_t.fill_between(np.arange(x_l, x_r+1),
-                                                               self.t_spk[btn_ind_t][x_l:x_r+1],
-                                                               color="#ecff00")
+                                                                   self.t_spk[btn_ind_t][x_l:x_r+1],
+                                                                   color="#42f4ee")
+                self.analyze_mean_t = self.ax_t.vlines(analyze.mean,
+                                                         0,
+                                                         self.t_spk[btn_ind_t][int(analyze.mean)])
+                self.analyze_fwhm_t = self.ax_t.hlines(analyze.fwhm_y + np.mean(analyze.bg),
+                                                         x_l + analyze.fwhm_ch_l,
+                                                         x_l + analyze.fwhm_ch_r)
             else:
                 analyze = Analyze_peak(self.tsum_spk[btn_ind_tsum], x_l, x_r)
                 self.analyze_curve_peak_t = self.ax_t.fill_between(np.arange(x_l, x_r+1),
                                                                 self.tsum_spk[btn_ind_tsum][x_l:x_r+1],
-                                                                color="#ecff00")
-            
+                                                                color="#42f4ee")
+                self.analyze_mean_t = self.ax_t.vlines(analyze.mean,
+                                                       0,
+                                                       self.tsum_spk[btn_ind_tsum][int(analyze.mean)])
+                self.analyze_fwhm_t = self.ax_t.hlines(analyze.fwhm_y + np.mean(analyze.bg),
+                                                       x_l + analyze.fwhm_ch_l,
+                                                       x_l + analyze.fwhm_ch_r)
                 
             self.canvas_t.draw()
 
@@ -1335,7 +1346,8 @@ class Create_UI(Gtk.Window):
         logging.info("_clr_analyze_t()")
         try:
             self.analyze_curve_peak_t.remove()
-            print("removed???")
+            self.analyze_mean_t.remove()
+            self.analyze_fwhm_t.remove()
         except AttributeError:
             logging.error("AttributeError in _clr_analyze_t")
         except ValueError:
