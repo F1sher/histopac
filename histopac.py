@@ -726,6 +726,7 @@ class Create_UI(Gtk.Window):
         self.canvas_t = FigureCanvas(self.fig_t)
         self.canvas_t.mpl_connect("motion_notify_event", self.motion_mpl_t)
         self.canvas_t.mpl_connect("button_press_event", self.press_btn_mpl_t)
+        self.canvas_t.mpl_connect("button_release_event", self.resize_mpl_t)
 
         self.ax_t = self.fig_t.add_subplot(111)
         self.ax_t.autoscale(False, "both", True)
@@ -893,7 +894,12 @@ class Create_UI(Gtk.Window):
                                                         ymax = y,
                                                         color = "black"))
                 #text near vlines
-                self.txt_vlines_en.append(self.ax_en.text(x = x - 60,
+                text_hshift = {2000: 60, 1000: 30, 500: 15, 100: 10, 50: 5, 10: 0}
+                x_l, x_r = self.ax_en.get_xlim()
+                for k in text_hshift.keys():
+                    if k < (x_r - x_l):
+                        hshift = text_hshift[k]
+                self.txt_vlines_en.append(self.ax_en.text(x = x - hshift,
                                                           y = y,
                                                           s = "{:.0f}".format(x),
                                                           rotation = 90))
@@ -1160,12 +1166,33 @@ class Create_UI(Gtk.Window):
                                                       ymin = 0,
                                                       ymax = y,
                                                       color = "black"))
-                self.txt_vlines_t.append(self.ax_t.text(x = x - 60,
-                                                          y = y,
-                                                          s = "{:.0f}".format(x),
-                                                          rotation = 90))
+                text_hshift = {2000: 60, 1000: 30, 500: 15, 100: 10, 50: 5, 10: 0}
+                x_l, x_r = self.ax_t.get_xlim()
+                for k in text_hshift.keys():
+                    if k < (x_r - x_l):
+                        hshift = text_hshift[k]
+                self.txt_vlines_t.append(self.ax_t.text(x = x - hshift,
+                                                        y = 0.9*y,
+                                                        s = "{:.0f}".format(x),
+                                                        rotation = 90,
+                                                        fontsize=16))
                 self.canvas_t.draw()
+
+
+    def resize_mpl_t(self, event):
+        print("Resize event in mpl_t")
+        l_mouse_btn = 1
+        if event.button == l_mouse_btn:
+            try:
+                self.vlines_t
                     
+                if len(self.vlines_t) == 2:
+                    self._clr_vlines_t()
+            except AttributeError:
+                self.vlines_t = []
+                self.x_vlines_t = []
+                self.txt_vlines_t = [] 
+        
         
     def click_btn_analyze_peak_t(self, btn):
         logging.info("Click btn analyze peak")
@@ -1547,4 +1574,3 @@ def parse_constants(path_constants_file):
         
 if __name__ == "__main__":
     main()
-
