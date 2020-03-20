@@ -443,11 +443,12 @@ class Calc_view_t(Calc_view_en):
         self._exp_tau_line = 3
         self._exp_B_line = 4
 
-    def set_analyze_exp(self, analyze):
+        
+    def set_analyze_exp(self, analyze, ch_to_ns):
         super().clr_buf()
         self.set_exp_eq()
         self.set_exp_A(analyze.A)
-        self.set_exp_tau(analyze.tau)
+        self.set_exp_tau(analyze.tau, ch_to_ns)
         
 
     def set_exp_eq(self):
@@ -466,8 +467,8 @@ class Calc_view_t(Calc_view_en):
         super()._apply_tag_at_line_offset("large_fontsize", self._exp_A_line, len(txt) - 1)
         
 
-    def set_exp_tau(self, tau):
-        txt = u"\u03c4 = {:.2f}\n".format(tau)
+    def set_exp_tau(self, tau, ch_to_ns):
+        txt = u"\u03c4 = {:.2f} ({:.3f} ns)\n".format(tau, ch_to_ns(tau))
         super()._insert_txt_at_line(txt, self._exp_tau_line)
 
         self._apply_tag_at_line_offset("bold", self._exp_tau_line, len(u"\u03c4"))
@@ -495,16 +496,21 @@ class Analyze_exp_t():
     def calc_bg(self):
         if self.exp_right:
             avg = np.sum(self.t_spk[self.x_r - 4:self.x_r + 4]) / 8.0
+            std = np.std(self.t_spk[self.x_r - 4:self.x_r + 4]) / 8.0
         else:
             avg = np.sum(self.t_spk[self.x_l - 4:self.x_l + 4]) / 8.0
-            
-        return np.array((self.x_r - self.x_l) * [avg], dtype = np.int64)
+            std = np.std(self.t_spk[self.x_l - 4:self.x_l + 4]) / 8.0
 
+        print("std / avg = ", std/avg)
+        if std / avg  > 0.01:
+            return np.array((self.x_r - self.x_l) * [avg], dtype=np.int64)
+        else:
+            return np.array((self.x_r - self.x_l) * [0], dtype=np.int64)
 
+    """
+     Approximate exponent with A * exp (-t / tau)
+    """
     def approx_exp(self):
-        """
-        Approximate exponent with A * exp (-t / tau)
-        """
         x = np.arange(self.x_l, self.x_r)
         y = np.log( np.clip(self.t_spk[self.x_l:self.x_r] - self.bg,
                             1,
@@ -517,11 +523,11 @@ class Analyze_exp_t():
         return np.array([self.A * np.exp(-i / self.tau) for i in np.arange(self.x_l, self.x_r)]) + self.bg
         
 
+    """
+     True if exp is right (i.e. |\)
+     False if exp is left (i.e. /|)
+    """
     def is_exp_right(self):
-        """
-        True if exp is right (i.e. |\)
-        False if exp is left (i.e. /|)
-        """
         l_avg_bins = np.sum(self.t_spk[self.x_l - 2:self.x_l + 2]) / 4.0
         r_avg_bins = np.sum(self.t_spk[self.x_r - 2:self.x_r + 2]) / 4.0
 
@@ -1113,7 +1119,6 @@ class Create_UI(Gtk.Window):
 
 
     def resize_mpl_t(self, event):
-        print("Resize event in mpl_t")
         l_mouse_btn = 1
         if event.button == l_mouse_btn:
             try:
@@ -1199,7 +1204,7 @@ class Create_UI(Gtk.Window):
 
             self.canvas_t.draw()
 
-            self.calc_view_t.set_analyze_exp(analyze)
+            self.calc_view_t.set_analyze_exp(analyze, self.calibr_t.ch_to_ns)
             
             
     def click_btn_clr_analyze_t(self, btn):
