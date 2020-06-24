@@ -209,155 +209,6 @@ class Analyze_peak():
         fwhm_err = ((fwhm_err_l[0]-fwhm_err_l[1])**2 + (fwhm_err_r[0]-fwhm_err_r[1])**2)**0.5
 
         return fwhm, fwhm_err
-<<<<<<< HEAD
-    
-||||||| merged common ancestors
-    """    
-        eps = 1.0e-6
-        max_en_spk = max(self.en_spk[self.x_l:self.x_r])
-
-        try:
-            i = np.where(self.en_spk[self.x_l:self.x_r] >= max_en_spk / 2)[0][0]
-        except IndexError:
-            i = self.x_l
-
-        xp_l = [i - 1, i]
-        xp_l_err = [x + np.sqrt(abs(x)) for x in xp_l]
-        yp_l = [self.en_spk[self.x_l + i - 1], self.en_spk[self.x_l + i]]
-            
-        k_l = self.en_spk[self.x_l + i] - self.en_spk[self.x_l + i - 1]
-        b_l = self.en_spk[self.x_l + i] - k_l * i
-
-        i_r_shift = 4
-        try:
-            i = i + i_r_shift + np.where(self.en_spk[self.x_l + i + i_r_shift:self.x_r] <= max_en_spk / 2)[0][0]
-        except IndexError:
-            i = self.x_r
-
-        xp_r = [i - 1, i]
-        xp_r_err = [x + np.sqrt(abs(x)) for x in xp_r]
-        yp_r = [self.en_spk[self.x_l + i - 1], self.en_spk[self.x_l + i]]
-        
-        k_r = self.en_spk[self.x_l + i] - self.en_spk[self.x_l + i - 1]
-        b_r = self.en_spk[self.x_l + i] - k_r * i
-
-        logging.info("k_l = {:e}, k_r = {:e}".format(k_l, k_r))
-        self.fwhm_ch_l = (max_en_spk / 2 - b_l) / k_l
-        self.fwhm_ch_r = (max_en_spk / 2 - b_r) / k_r
-            
-        self.fwhm_y = max_en_spk / 2 + self.bg[np.where(self.en_spk[self.x_l:self.x_r] == max_en_spk)[0][0]]
-
-        fwhm = self.fwhm_ch_r - self.fwhm_ch_l
-
-        fwhm_err_l, fwhm_err_r = np.zeros(2), np.zeros(2)
-        
-        k, b = np.polyfit(xp_l_err, yp_l, 1)
-        #fwhm_err_l[0] = k * max_en_spk / 2 + b
-        try:
-            fwhm_err_l[0] = (max_en_spk / 2 - b ) / k 
-        except RuntimeWarning:
-            fwhm_err_l[0] = 0.0
-        xp_l_err = [x - np.sqrt(abs(x)) for x in xp_l]
-        k, b = np.polyfit(xp_l_err, yp_l, 1)
-        #fwhm_err_l[1] = k * max_en_spk / 2 + b
-        try:
-            fwhm_err_l[1] = (max_en_spk / 2 - b ) / k
-        except RuntimeWarning:
-            fwhm_err_l[1] = 0.0
-        logging.info("fwhm_err_l0 = {:.1f}, fwhm_err_l1 = {:.1f}".format(fwhm_err_l[0], fwhm_err_l[1]))
-            
-        k, b = np.polyfit(xp_r_err, yp_r, 1)
-        #fwhm_err_r[0] = k * max_en_spk / 2 + b
-        try:
-            fwhm_err_r[0] = (max_en_spk / 2 - b ) / k
-        except RuntimeWarning:
-            fwhm_err_r[0] = 0.0
-        xp_r_err = [x - np.sqrt(x) for x in xp_r]
-        k, b = np.polyfit(xp_r_err, yp_r, 1)
-        #fwhm_err_r[1] = k * max_en_spk / 2 + b
-        try:
-            fwhm_err_r[1] = (max_en_spk / 2 - b ) / k
-        except RuntimeWarning:
-            fwhm_err_r[1] = 0.0
-        logging.info("fwhm_err_r0 = {:.1f}, fwhm_err_r1 = {:.1f}".format(fwhm_err_r[0], fwhm_err_r[1]))
-        
-        fwhm_err = np.sqrt((fwhm_err_l[0] - fwhm_err_l[1])**2 + (fwhm_err_r[0] - fwhm_err_r[1])**2)
-    """
-    
-=======
-    """
-        eps = 1.0e-6
-        max_en_spk = max(self.en_spk[self.x_l:self.x_r])
-
-        try:
-            i = np.where(self.en_spk[self.x_l:self.x_r] >= max_en_spk / 2)[0][0]
-        except IndexError:
-            i = self.x_l
-
-        xp_l = [i - 1, i]
-        xp_l_err = [x + np.sqrt(abs(x)) for x in xp_l]
-        yp_l = [self.en_spk[self.x_l + i - 1], self.en_spk[self.x_l + i]]
-            
-        k_l = self.en_spk[self.x_l + i] - self.en_spk[self.x_l + i - 1]
-        b_l = self.en_spk[self.x_l + i] - k_l * i
-
-        i_r_shift = 4
-        try:
-            i = i + i_r_shift + np.where(self.en_spk[self.x_l + i + i_r_shift:self.x_r] <= max_en_spk / 2)[0][0]
-        except IndexError:
-            i = self.x_r
-
-        xp_r = [i - 1, i]
-        xp_r_err = [x + np.sqrt(abs(x)) for x in xp_r]
-        yp_r = [self.en_spk[self.x_l + i - 1], self.en_spk[self.x_l + i]]
-        
-        k_r = self.en_spk[self.x_l + i] - self.en_spk[self.x_l + i - 1]
-        b_r = self.en_spk[self.x_l + i] - k_r * i
-
-        logging.info("k_l = {:e}, k_r = {:e}".format(k_l, k_r))
-        self.fwhm_ch_l = (max_en_spk / 2 - b_l) / k_l
-        self.fwhm_ch_r = (max_en_spk / 2 - b_r) / k_r
-            
-        self.fwhm_y = max_en_spk / 2 + self.bg[np.where(self.en_spk[self.x_l:self.x_r] == max_en_spk)[0][0]]
-
-        fwhm = self.fwhm_ch_r - self.fwhm_ch_l
-
-        fwhm_err_l, fwhm_err_r = np.zeros(2), np.zeros(2)
-        
-        k, b = np.polyfit(xp_l_err, yp_l, 1)
-        #fwhm_err_l[0] = k * max_en_spk / 2 + b
-        try:
-            fwhm_err_l[0] = (max_en_spk / 2 - b ) / k 
-        except RuntimeWarning:
-            fwhm_err_l[0] = 0.0
-        xp_l_err = [x - np.sqrt(abs(x)) for x in xp_l]
-        k, b = np.polyfit(xp_l_err, yp_l, 1)
-        #fwhm_err_l[1] = k * max_en_spk / 2 + b
-        try:
-            fwhm_err_l[1] = (max_en_spk / 2 - b ) / k
-        except RuntimeWarning:
-            fwhm_err_l[1] = 0.0
-        logging.info("fwhm_err_l0 = {:.1f}, fwhm_err_l1 = {:.1f}".format(fwhm_err_l[0], fwhm_err_l[1]))
-            
-        k, b = np.polyfit(xp_r_err, yp_r, 1)
-        #fwhm_err_r[0] = k * max_en_spk / 2 + b
-        try:
-            fwhm_err_r[0] = (max_en_spk / 2 - b ) / k
-        except RuntimeWarning:
-            fwhm_err_r[0] = 0.0
-        xp_r_err = [x - np.sqrt(x) for x in xp_r]
-        k, b = np.polyfit(xp_r_err, yp_r, 1)
-        #fwhm_err_r[1] = k * max_en_spk / 2 + b
-        try:
-            fwhm_err_r[1] = (max_en_spk / 2 - b ) / k
-        except RuntimeWarning:
-            fwhm_err_r[1] = 0.0
-        logging.info("fwhm_err_r0 = {:.1f}, fwhm_err_r1 = {:.1f}".format(fwhm_err_r[0], fwhm_err_r[1]))
-        
-        fwhm_err = np.sqrt((fwhm_err_l[0] - fwhm_err_l[1])**2 + (fwhm_err_r[0] - fwhm_err_r[1])**2)
-    """
-
->>>>>>> Path.join for concat filenames in main()
 
     def calc_resol(self):
         return self.fwhm / self.mean
@@ -415,7 +266,6 @@ class Calibr_en():
                  "energies": self.en}
             json.dump(d, f)
 
-<<<<<<< HEAD
 
 class Calibr_t():
     def __init__(self, T_SCALE):
@@ -430,11 +280,6 @@ class Calibr_t():
         return ns / self.ns_per_ch
         
             
-||||||| merged common ancestors
-            
-=======
-
->>>>>>> Path.join for concat filenames in main()
 class Dialog_calibr_en(Gtk.Dialog):
     def __init__(self, parent, calibr_en):
         Gtk.Dialog.__init__(self, "Energy calibration", parent, 0,
@@ -443,19 +288,9 @@ class Dialog_calibr_en(Gtk.Dialog):
 
         self.set_default_size(200, 100)
 
-<<<<<<< HEAD
         label_ch = Gtk.Label("Channels [ch]:")
         label_en = Gtk.Label("Energies [keV]:")
         
-||||||| merged common ancestors
-        label_ch = Gtk.Label("Channels:")
-        label_en = Gtk.Label("Energies:")
-        
-=======
-        label_ch = Gtk.Label("Channels:")
-        label_en = Gtk.Label("Energies:")
-
->>>>>>> Path.join for concat filenames in main()
         self.entry_ch = [Gtk.Entry() for i in range(det_num)]
         self.entry_en = [Gtk.Entry() for i in range(det_num)]
 
@@ -490,29 +325,14 @@ class Calc_view_en():
         self.large_size_tag = self.buf.create_tag("large_fontsize", size=14*Pango.SCALE)
 
         self._title_line = 0
-<<<<<<< HEAD
+
         self._ch_analyze_line = 1
         self._integral_line = 2
         self._area_line = 3
         self._mean_line = 4
         self._fwhm_line = 5
         self._resol_line = 6
-        
-||||||| merged common ancestors
-        self._integral_line = 1
-        self._area_line = 2
-        self._mean_line = 3
-        self._fwhm_line = 4
-        self._resol_line = 5
-        
-=======
-        self._integral_line = 1
-        self._area_line = 2
-        self._mean_line = 3
-        self._fwhm_line = 4
-        self._resol_line = 5
 
->>>>>>> Path.join for concat filenames in main()
         self.set_title("Analyze results")
         
         
@@ -540,23 +360,15 @@ class Calc_view_en():
         self._insert_txt_at_line(txt, self._title_line)
         self._apply_tag_at_line_offset("bold", self._title_line, len(txt))
         self._apply_tag_at_line_offset("large_fontsize", self._title_line, len(txt))
-<<<<<<< HEAD
 
-
+        
     def set_edges(self, x_l, x_r):
         txt = "Edges: {:d} - {:d}\n".format(x_l, x_r)
         self._insert_txt_at_line(txt, self._ch_analyze_line)
         self._apply_tag_at_line_offset("bold", self._ch_analyze_line, len("Edges"))
         self._apply_tag_at_line_offset("large_fontsize", self._ch_analyze_line, len(txt) - 1)
-        
-        
-||||||| merged common ancestors
-        
-        
-=======
 
 
->>>>>>> Path.join for concat filenames in main()
     def set_integral(self, integral_val, integral_err):
         txt = "Integral: {:.1f}\u00b1{:.1f} k\n".format(integral_val / 1000, integral_err / 1000)
         self._insert_txt_at_line(txt, self._integral_line)
@@ -567,12 +379,6 @@ class Calc_view_en():
     def set_area(self, area_val, area_err):
         txt = "Area: {:.1f}\u00b1{:.1f} k\n".format(area_val / 1000, area_err / 1000)
         self._insert_txt_at_line(txt, self._area_line)
-<<<<<<< HEAD
-||||||| merged common ancestors
-        
-=======
-
->>>>>>> Path.join for concat filenames in main()
         self._apply_tag_at_line_offset("bold", self._area_line, len("Area"))
         self._apply_tag_at_line_offset("large_fontsize", self._area_line, len(txt) - 1)
 
@@ -627,16 +433,7 @@ class Calc_view_t(Calc_view_en):
         super().clr_buf()
         self.set_exp_eq()
         self.set_exp_A(analyze.A)
-<<<<<<< HEAD
         self.set_exp_tau(analyze.tau, ch_to_ns)
-        
-||||||| merged common ancestors
-        self.set_exp_tau(analyze.tau)
-        
-=======
-        self.set_exp_tau(analyze.tau)
-
->>>>>>> Path.join for concat filenames in main()
 
     def set_exp_eq(self):
         txt = u"y(t) = A*exp(-t/\u03c4) + B(t)\n"
@@ -686,15 +483,7 @@ class Analyze_exp_t():
             std = np.std(self.t_spk[self.x_r - 4:self.x_r + 4]) / 8.0
         else:
             avg = np.sum(self.t_spk[self.x_l - 4:self.x_l + 4]) / 8.0
-<<<<<<< HEAD
             std = np.std(self.t_spk[self.x_l - 4:self.x_l + 4]) / 8.0
-||||||| merged common ancestors
-            
-        return np.array((self.x_r - self.x_l) * [avg], dtype = np.int64)
-=======
-
-        return np.array((self.x_r - self.x_l) * [avg], dtype=np.int64)
->>>>>>> Path.join for concat filenames in main()
 
         print("std / avg = ", std/avg)
         if std / avg  > 0.01:
@@ -950,19 +739,9 @@ class Create_UI(Gtk.Window):
         vbox_ptr_t.pack_start(self.entry_ptr_t, False, False, 0)
         grid_t.attach(vbox_ptr_t, 0, 3, 1, 1)
 
-<<<<<<< HEAD
         self.calibr_t = Calibr_t(self.consts["T_SCALE"])
         
         if self.calibr_t.ns_per_ch > 1.0:
-||||||| merged common ancestors
-        ns_per_ch = 8.0 / ((1.0 + self.consts["T_SCALE"][1]) /
-                             (2.0 * self.consts["T_SCALE"][1] / histo_size) - 0.5 * histo_size)
-        if ns_per_ch > 1.0:
-=======
-        ns_per_ch = 8.0 / ((1.0 + self.consts["T_SCALE"][1]) /
-                           (2.0 * self.consts["T_SCALE"][1] / histo_size) - 0.5 * histo_size)
-        if ns_per_ch > 1.0:
->>>>>>> Path.join for concat filenames in main()
             lbl_ns_per_ch = Gtk.Label()
             lbl_ns_per_ch.set_use_markup(True)
             lbl_ns_per_ch.set_markup("<span font='20'>{:.3f} ns/ch</span>".
@@ -979,7 +758,7 @@ class Create_UI(Gtk.Window):
 
         
     def main_quit(self, event, data):
-        logging.info("quit | data = {}".format(data))
+        logging.info("quit | data = ", data)
         #save params in file
         #save check EN and T btns pos
         
@@ -1037,7 +816,7 @@ class Create_UI(Gtk.Window):
                                                         ymax=y,
                                                         color="black"))
                 #text near vlines
-<<<<<<< HEAD
+
                 text_hshift = {2000: 60, 1000: 30, 500: 15, 100: 10, 50: 5, 10: 0}
                 x_l, x_r = self.ax_en.get_xlim()
                 for k in text_hshift.keys():
@@ -1048,17 +827,6 @@ class Create_UI(Gtk.Window):
                                                           s = "{:.0f}".format(x),
                                                           rotation = 90,
                                                           fontsize = 16))
-||||||| merged common ancestors
-                self.txt_vlines_en.append(self.ax_en.text(x = x - 60,
-                                                          y = y,
-                                                          s = "{:.0f}".format(x),
-                                                          rotation = 90))
-=======
-                self.txt_vlines_en.append(self.ax_en.text(x=x - 60,
-                                                          y=y,
-                                                          s="{:.0f}".format(x),
-                                                          rotation=90))
->>>>>>> Path.join for concat filenames in main()
                 
                 self.canvas_en.draw()
         
@@ -1249,11 +1017,11 @@ class Create_UI(Gtk.Window):
 
     def count_act_check_btns_t(self):
         num_act_btns = 0
-        btn_ind = []
+        btn_ind = -1
         for i in range(t_spk_num):
             if self.check_btn_t[i].get_active():
                 num_act_btns += 1 
-                btn_ind.append(i)
+                btn_ind = i
 
         return num_act_btns, btn_ind
 
@@ -1318,7 +1086,7 @@ class Create_UI(Gtk.Window):
                     y = self.tsum_spk[btn_ind_tsum][x]
 
                 self.x_vlines_t.append(x)
-<<<<<<< HEAD
+
                 self.vlines_t.append(self.ax_t.vlines(x = x,
                                                       ymin = 0,
                                                       ymax = y,
@@ -1333,27 +1101,6 @@ class Create_UI(Gtk.Window):
                                                         s = "{:.0f}".format(x),
                                                         rotation = 90,
                                                         fontsize = 16))
-||||||| merged common ancestors
-                self.vlines_t.append(self.ax_t.vlines(x = x,
-                                                      ymin = 0,
-                                                      ymax = y,
-                                                      color = "black"))
-                self.txt_vlines_t.append(self.ax_t.text(x = x - 60,
-                                                          y = y,
-                                                          s = "{:.0f}".format(x),
-                                                          rotation = 90))
-                
-=======
-                self.vlines_t.append(self.ax_t.vlines(x=x,
-                                                      ymin=0,
-                                                      ymax=y,
-                                                      color="black"))
-                self.txt_vlines_t.append(self.ax_t.text(x=x - 60,
-                                                        y=y,
-                                                        s="{:.0f}".format(x),
-                                                        rotation=90))
-                
->>>>>>> Path.join for concat filenames in main()
                 self.canvas_t.draw()
 
 
@@ -1467,7 +1214,7 @@ class Create_UI(Gtk.Window):
 
         self.canvas_t.draw()
 
-
+        
     def click_btn_sum_t(self, btn):
         num_btn, ind_btn = self.count_act_check_btns_t()
         if num_btn == 2:
@@ -1552,7 +1299,6 @@ class Create_UI(Gtk.Window):
         self.canvas_en.draw()
 
         for i in range(t_spk_num):
-<<<<<<< HEAD
             self.t_lines.append( self.ax_t.plot(x, self.t_spk[i], marker="o",
                                                 ms=5, mew=0,
                                                 color=gui_params.t_spk_mpl_colors[i], lw=0)[0] )
@@ -1561,15 +1307,6 @@ class Create_UI(Gtk.Window):
                                                 ms=5, mew=0,
                                                 color=gui_params.t_spk_mpl_colors[2*i], lw=0)[0] )
 
-||||||| merged common ancestors
-            self.t_lines.append( self.ax_t.plot(x, self.t_spk[i], marker="o",
-                                                ms=5, mew=0,
-                                                color=gui_params.t_spk_mpl_colors[i], lw=0)[0] )
-=======
-            self.t_lines.append(self.ax_t.plot(x, self.t_spk[i], marker="o",
-                                               ms=5, mew=0,
-                                               color=gui_params.t_spk_mpl_colors[i], lw=0)[0])
->>>>>>> Path.join for concat filenames in main()
         self.set_lim_vals_t(0)
         
         self.canvas_t.draw()
