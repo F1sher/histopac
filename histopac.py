@@ -363,7 +363,7 @@ class Calc_view_en():
 
         
     def set_edges(self, x_l, x_r):
-        txt = "Edges: {:d} - {:d}\n".format(x_l, x_r)
+        txt = "Edges: {:d} - {:d} ch\n".format(x_l, x_r)
         self._insert_txt_at_line(txt, self._ch_analyze_line)
         self._apply_tag_at_line_offset("bold", self._ch_analyze_line, len("Edges"))
         self._apply_tag_at_line_offset("large_fontsize", self._ch_analyze_line, len(txt) - 1)
@@ -384,14 +384,14 @@ class Calc_view_en():
 
         
     def set_mean(self, mean_val, mean_err, ch_to_phys):
-        txt = "Position: {:.1f}\u00b1{:.1f} ({:.1f} keV)\n".format(mean_val, mean_err, ch_to_phys(mean_val))
+        txt = "Position: {:.1f}\u00b1{:.1f} ch ({:.1f} keV)\n".format(mean_val, mean_err, ch_to_phys(mean_val))
         self._insert_txt_at_line(txt, self._mean_line)
         self._apply_tag_at_line_offset("bold", self._mean_line, len("Position"))
         self._apply_tag_at_line_offset("large_fontsize", self._mean_line, len(txt) - 1)
 
 
     def set_fwhm(self, fwhm_val, fwhm_err, ch_to_phys):
-        txt = "FWHM: {:.1f}\u00b1{:.1f} ({:.1f} keV)\n".format(fwhm_val, fwhm_err, ch_to_phys(fwhm_val))
+        txt = "FWHM: {:.1f}\u00b1{:.1f} ch ({:.1f} keV)\n".format(fwhm_val, fwhm_err, ch_to_phys(fwhm_val))
         self._insert_txt_at_line(txt, self._fwhm_line)
         self._apply_tag_at_line_offset("bold", self._fwhm_line, len("FWHM"))
         self._apply_tag_at_line_offset("large_fontsize", self._fwhm_line, len(txt) - 1)
@@ -436,7 +436,7 @@ class Calc_view_t(Calc_view_en):
         self.set_exp_tau(analyze.tau, ch_to_ns)
 
     def set_exp_eq(self):
-        txt = u"y(t) = A*exp(-t/\u03c4) + B(t)\n"
+        txt = u"y(t) = A*exp(-t/\u03c4) + B\n"
         super()._insert_txt_at_line(txt, self._exp_eq_line)
 
         super()._apply_tag_at_line_offset("bold", self._exp_eq_line, len(txt) - 1)
@@ -452,7 +452,7 @@ class Calc_view_t(Calc_view_en):
 
 
     def set_exp_tau(self, tau, ch_to_ns):
-        txt = u"\u03c4 = {:.2f} ({:.3f} ns)\n".format(tau, ch_to_ns(tau))
+        txt = u"\u03c4 = {:.2f} ch ({:.3f} ns)\n".format(tau, ch_to_ns(tau))
         super()._insert_txt_at_line(txt, self._exp_tau_line)
 
         self._apply_tag_at_line_offset("bold", self._exp_tau_line, len(u"\u03c4"))
