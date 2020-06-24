@@ -1249,11 +1249,11 @@ class Create_UI(Gtk.Window):
 
     def count_act_check_btns_t(self):
         num_act_btns = 0
-        btn_ind = -1
+        btn_ind = []
         for i in range(t_spk_num):
             if self.check_btn_t[i].get_active():
                 num_act_btns += 1 
-                btn_ind = i
+                btn_ind.append(i)
 
         return num_act_btns, btn_ind
 
@@ -1467,7 +1467,7 @@ class Create_UI(Gtk.Window):
 
         self.canvas_t.draw()
 
-        
+
     def click_btn_sum_t(self, btn):
         num_btn, ind_btn = self.count_act_check_btns_t()
         if num_btn == 2:
