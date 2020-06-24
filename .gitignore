@@ -1,3 +1,5 @@
 testspk/*
 __pycache__/*
+.python-version
+pylint_errors.txt
 *~
