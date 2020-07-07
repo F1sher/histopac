@@ -538,6 +538,7 @@ class Create_UI(Gtk.Window):
         self.consts = consts
 
         Gtk.Window.__init__(self)
+        self.maximize()
         self.set_title(path.basename(path.abspath(dir_name)) + " - histopac")
         self.connect("delete-event", self.main_quit)
 
