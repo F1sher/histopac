@@ -442,7 +442,6 @@ class Calc_view_t(Calc_view_en):
         super()._apply_tag_at_line_offset("bold", self._exp_eq_line, len(txt) - 1)
         #super()._apply_tag_at_line_offset("large_fontsize", self._exp_eq_line, len(txt) - 1)
 
-
     def set_exp_A(self, A):
         txt = "A = {:.0e}\n".format(A)
         super()._insert_txt_at_line(txt, self._exp_A_line)
@@ -458,12 +457,23 @@ class Calc_view_t(Calc_view_en):
         self._apply_tag_at_line_offset("bold", self._exp_tau_line, len(u"\u03c4"))
         super()._apply_tag_at_line_offset("large_fontsize", self._exp_tau_line, len(txt) - 1)
 
-
     def set_B_line(self, B):
         txt = "B = {:.1f}".format(B)
         super()._insert_txt_at_line(txt, self._exp_B_line)
 
+    def set_mean(self, mean_val, mean_err, ch_to_phys):
+        txt = "Position: {:.1f}\u00b1{:.1f} ({:.1f} ns)\n".format(mean_val, mean_err, ch_to_phys(mean_val))
+        self._insert_txt_at_line(txt, self._mean_line)
+        self._apply_tag_at_line_offset("bold", self._mean_line, len("Position"))
+        self._apply_tag_at_line_offset("large_fontsize", self._mean_line, len(txt) - 1)
 
+    def set_fwhm(self, fwhm_val, fwhm_err, ch_to_phys):
+        txt = "FWHM: {:.1f}\u00b1{:.1f} ({:.3f} ns)\n".format(fwhm_val, fwhm_err, ch_to_phys(fwhm_val))
+        self._insert_txt_at_line(txt, self._fwhm_line)
+        self._apply_tag_at_line_offset("bold", self._fwhm_line, len("FWHM"))
+        self._apply_tag_at_line_offset("large_fontsize", self._fwhm_line, len(txt) - 1)
+
+        
 
 class Analyze_exp_t():
     def __init__(self, t_spk, x_l, x_r):
@@ -1159,10 +1169,11 @@ class Create_UI(Gtk.Window):
 
             def ch_to_phys(ch):
                 try:
-                    return self.ch_to_ns(btn_ind)
+                    return self.calibr_t.ch_to_ns(ch)
                 except AttributeError:
+                    logging.error("AttributeError, ch is {:d}".format(ch))
                     return -1
-                
+
             self.calc_view_t.set_analyze_peak(analyze, ch_to_phys)
             
         
