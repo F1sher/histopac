@@ -758,7 +758,7 @@ class Create_UI(Gtk.Window):
 
         
     def main_quit(self, event, data):
-        logging.info("quit | data = ", data)
+        logging.info("quit | data = {}".format(data))
         #save params in file
         #save check EN and T btns pos
         
