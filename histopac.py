@@ -1315,7 +1315,7 @@ class Create_UI(Gtk.Window):
     def set_lim_vals_en(self, flag):
         if flag == 0:
             self.x_en_min0, self.x_en_max0 = 0, histo_size
-            self.y_en_min0, self.y_en_max0 = 0, 1.05 * max([max(spk) for spk in self.en_spk])
+            self.y_en_min0, self.y_en_max0 = 0, 1.05 * max([max(spk) for spk in self.en_spk]) or 1
             self.ax_en.set_xlim(self.x_en_min0, self.x_en_max0)
             self.ax_en.set_ylim(self.y_en_min0, self.y_en_max0)
 
@@ -1323,7 +1323,7 @@ class Create_UI(Gtk.Window):
     def set_lim_vals_t(self, flag):
         if flag == 0:
             self.x_t_min0, self.x_t_max0 = 0, histo_size
-            self.y_t_min0, self.y_t_max0 = 0, 1.05 * max([max(spk) for spk in self.t_spk])
+            self.y_t_min0, self.y_t_max0 = 0, 1.05 * max([max(spk) for spk in self.t_spk]) or 1
             self.ax_t.set_xlim(self.x_t_min0, self.x_t_max0)
             self.ax_t.set_ylim(self.y_t_min0, self.y_t_max0)
             
