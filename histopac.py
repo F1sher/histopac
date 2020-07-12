@@ -1043,7 +1043,7 @@ class Create_UI(Gtk.Window):
         for i in range(tsum_spk_num):
             if self.check_btn_tsum[i].get_active():
                 num_act_btns += 1 
-                btn_ind = i
+                btn_ind = i 
 
         return num_act_btns, btn_ind
 
@@ -1231,6 +1231,10 @@ class Create_UI(Gtk.Window):
     def click_btn_sum_t(self, btn):
         num_btn, ind_btn = self.count_act_check_btns_t()
         if num_btn == 2:
+            ind_btn = []
+            for i in range(t_spk_num):
+                if self.check_btn_t[i].get_active(): 
+                    ind_btn.append(i)
             print("Exactly 2 btns actives")
             print(ind_btn)
             sum_spk_t = np.array(self.t_spk[ind_btn[0]]) + np.array(self.t_spk[ind_btn[1]])
