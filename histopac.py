@@ -541,6 +541,7 @@ class Create_UI(Gtk.Window):
         self.maximize()
         self.set_title(path.basename(path.abspath(dir_name)) + " - histopac")
         self.connect("delete-event", self.main_quit)
+        self.set_icon_from_file("./icon.svg")
 
         box_main = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.add(box_main)
