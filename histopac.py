@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from configparser import ConfigParser
 from os import path
 from struct import unpack
 import logging
@@ -54,25 +55,33 @@ def main(dir_name):
 
     global ini
     ini = parse_ini(basic_ini_fname)
-    try:
-        if ini["cfg_path"] == -1:
-            cfg = parse_cfg(path.join(dir_name, "cfg.json"))
-            #dir_name + "cfg.json" if dir_name[-1] == "/" else dir_name + "/cfg.json")
-        else:
-            cfg = parse_cfg(ini["cfg_path"])
-    except FileNotFoundError:
-        cfg = {}
-        print("cfg file Not Found in folder with spk")
+    if path.exists(path.join(dir_name, "hdrainer.ini")) and \
+       path.exists(path.join(dir_name, "dsp.ini")):
+        #VUKAP 2.0
+        print("VUKAP 2.0")
+        cfg = parse_hdr_ini2(path.join(dir_name, "hdrainer.ini"))
+        consts = parse_dsp_ini2(path.join(dir_name, "dsp.ini"))
+    else:
+        #VUKAP 1.0
+        try:
+            if ini["cfg_path"] == -1:
+                cfg = parse_cfg(path.join(dir_name, "cfg.json"))
+                #dir_name + "cfg.json" if dir_name[-1] == "/" else dir_name + "/cfg.json")
+            else:
+                cfg = parse_cfg(ini["cfg_path"])
+        except FileNotFoundError:
+            cfg = {}
+            print("cfg file Not Found in folder with spk")
 
-    try:
-        if ini["const_path"] == -1:
-            consts = parse_constants(path.join(dir_name, "constants.json"))
+        try:
+            if ini["const_path"] == -1:
+                consts = parse_constants(path.join(dir_name, "constants.json"))
                 #dir_name + "constants.json" if dir_name[-1] == "/" else dir_name + "/constants.json")
-        else:
-            consts = parse_constants(ini["const_path"])
-    except FileNotFoundError:
-        consts = {"T_SCALE": [1.0, 1.0]}
-        print("const file Not Found in folder with spk")
+            else:
+                consts = parse_constants(ini["const_path"])
+        except FileNotFoundError:
+            consts = {"T_SCALE": [1.0, 1.0]}
+            print("const file Not Found in folder with spk")
 
     ui = Create_UI(dir_name, consts)
 
@@ -270,8 +279,13 @@ class Calibr_en():
 class Calibr_t():
     def __init__(self, T_SCALE):
         self.t_scale = T_SCALE
-        self.ns_per_ch = 8.0 / ((1.0 + self.t_scale[1]) /
-                                (2.0 * self.t_scale[1] / histo_size) - 0.5 * histo_size)
+        print("t_scale = ", self.t_scale)
+        if ini["vukap"] == 2.0:
+            self.adc_ns_per_ch = 4.0
+        else:
+            self.adc_ns_per_ch = 8.0
+        self.ns_per_ch = self.adc_ns_per_ch / ((1.0 + self.t_scale[1]) /
+                                               (2.0 * self.t_scale[1] / histo_size) - 0.5 * histo_size)
 
     def ch_to_ns(self, ch):
         return ch * self.ns_per_ch
@@ -1448,6 +1462,25 @@ def get_histos_from_folder(foldername="./testspk/"):
     return en_spk, t_spk
 
 
+def parse_hdr_ini2(path_ini_file):
+    config = ConfigParser()
+    config.read(path_ini_file)
+    cfg = {}
+    cfg["histo_folder"] = config["acquisition"]["out-foldername"]
+    cfg["en_range"] = []
+    for i in range(det_num):
+        rang = [int(xs) for xs in config["acquisition"]["det-{:d}".format(i+1)].split()]
+        cfg["en_range"].append(rang)
+    return cfg
+        
+def parse_dsp_ini2(path_ini_file):
+    config = ConfigParser()
+    config.read(path_ini_file)
+    cnst = {}
+    cnst["T_SCALE"] = [float(xs) for xs in config["dsp"]["t-scale"].split()]
+    return cnst
+    
+
 def set_ini(path_ini_file, **kwargs):
     with open(path_ini_file, "w") as fp_ini:
         ini = json.load(fp_ini)
@@ -1455,7 +1488,6 @@ def set_ini(path_ini_file, **kwargs):
         for path_name in ini.keys():
             if path_name in kwargs.keys():
                 ini[path_name] = kwargs[path_name]
-
 
 def parse_ini(path_ini_file):
     ini = {}

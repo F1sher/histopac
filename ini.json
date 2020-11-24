@@ -1,4 +1,5 @@
 {
+    "vukap": 2.0,
     "cfg_path": -1,
     "const_path": -1,
     "calibr_en_path": "./calibr_en.json"
