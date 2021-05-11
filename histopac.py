@@ -2,6 +2,7 @@
 
 from configparser import ConfigParser
 from os import path
+import sys
 from struct import unpack
 import logging
 import json
@@ -33,8 +34,9 @@ histo_t_fnames = ["TIME1.SPK", "TIME2.SPK", "TIME3.SPK", "TIME4.SPK",
                   "TIME5.SPK", "TIME6.SPK", "TIME7.SPK", "TIME8.SPK",
                   "TIME9.SPK", "TIME10.SPK", "TIME11.SPK", "TIME12.SPK"]
 
-basic_ini_fname = "./ini.json"
-refspk_fname = "./ref_transitions.json"
+wd_script = path.dirname(path.realpath(sys.argv[0]))
+basic_ini_fname = path.join(wd_script, "ini.json")
+refspk_fname = path.join(wd_script, "ref_transitions.json")
 ini = None
 
 
@@ -58,11 +60,12 @@ def main(dir_name):
     if path.exists(path.join(dir_name, "hdrainer.ini")) and \
        path.exists(path.join(dir_name, "dsp.ini")):
         #VUKAP 2.0
-        print("VUKAP 2.0")
+        print("The spectra in folder from VUKAP 2.0")
         cfg = parse_hdr_ini2(path.join(dir_name, "hdrainer.ini"))
         consts = parse_dsp_ini2(path.join(dir_name, "dsp.ini"))
     else:
         #VUKAP 1.0
+        print("The spectra in folder from VUKAP 1.0")
         try:
             if ini["cfg_path"] == -1:
                 cfg = parse_cfg(path.join(dir_name, "cfg.json"))
@@ -159,7 +162,6 @@ class Analyze_peak():
 
         while True:
             max_index = np.argmax(arr)
-            print(arr[max_index])
             #IF BAD PICK exit
             if arr[max_index] == 0:
                 return (0, 0)
@@ -170,7 +172,6 @@ class Analyze_peak():
                 break
 
         more_than_max2 = np.where(arr > arr[max_index]/2)[0]
-        print(more_than_max2)
 
         #find FWHM_left bound and FWHM_right bound
         yp_l = [more_than_max2[0]-1, more_than_max2[0]]
@@ -229,7 +230,7 @@ class Calibr_en():
         self.ch = [[-1.0, -1.0] for i in range(det_num)]
         self.en = [[-1.0, -1.0] for i in range(det_num)]
 
-        self.set_ch_en_from_file(ini["calibr_en_path"])
+        self.set_ch_en_from_file(path.join(wd_script, ini["calibr_en_path"]))
 
         self.k = det_num * [0]
         self.b = det_num * [0]
@@ -555,7 +556,7 @@ class Create_UI(Gtk.Window):
         self.maximize()
         self.set_title(path.basename(path.abspath(dir_name)) + " - histopac")
         self.connect("delete-event", self.main_quit)
-        self.set_icon_from_file("./icon.svg")
+        self.set_icon_from_file(path.join(wd_script, "./icon.svg"))
 
         box_main = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.add(box_main)
@@ -634,16 +635,14 @@ class Create_UI(Gtk.Window):
         btn_set_rwin_en.connect("clicked", self.click_btn_set_rwin_en)
         btn_show_wins_en = Gtk.Button(label="Show Wins")
         btn_show_wins_en.connect("clicked", self.click_btn_en_show_wins)
+        btn_log_scale_en = Gtk.Button(label="Log Scale")
+        btn_log_scale_en.connect("clicked", self.click_btn_log_scale_en)
         self.combobox_isotopes = Gtk.ComboBoxText()
-        self.combobox_isotopes.append_text("40K")
-        self.combobox_isotopes.append_text("44Ti")
-        self.combobox_isotopes.append_text("46Sc")
-        self.combobox_isotopes.append_text("48V")
-        self.combobox_isotopes.append_text("60Co")
-        self.combobox_isotopes.append_text("111Cd")
-        self.combobox_isotopes.append_text("175Yb")
-        self.combobox_isotopes.append_text("181Ta")
-        self.combobox_isotopes.append_text("207Bi")
+        ref_spk = Ref_spk()
+        ref_spk.set_path(refspk_fname)
+        ref_spk.read_spk()
+        for k in ref_spk.trans.keys():
+            self.combobox_isotopes.append_text(k)
         self.combobox_isotopes.set_active(0)
         btn_show_ref_spk = Gtk.Button(label="Show Ref")
         btn_show_ref_spk.connect("clicked", self.click_btn_show_ref_spk)
@@ -654,6 +653,7 @@ class Create_UI(Gtk.Window):
         grid_btns_cntrl.attach(btn_set_lwin_en, 0, 2, 1, 1)
         grid_btns_cntrl.attach(btn_set_rwin_en, 1, 2, 1, 1)
         grid_btns_cntrl.attach(btn_show_wins_en, 0, 3, 1, 1)
+        grid_btns_cntrl.attach(btn_log_scale_en, 1, 3, 1, 1)
         grid_btns_cntrl.attach(self.combobox_isotopes, 0, 4, 1, 1)
         grid_btns_cntrl.attach(btn_show_ref_spk, 1, 4, 1, 1)
         
@@ -1000,6 +1000,18 @@ class Create_UI(Gtk.Window):
 
         self.canvas_en.draw()
 
+
+    def click_btn_log_scale_en(self, btn):
+        if btn.get_label() == "Log Scale":
+            btn.set_label("Linear Scale")
+            self.ax_en.set_yscale("log")
+            bottom, top = self.ax_en.get_ylim()
+            self.ax_en.set_ylim(bottom, top)
+        else:
+            btn.set_label("Log Scale")
+            self.ax_en.set_yscale("linear")
+
+        self.canvas_en.draw()
         
     def click_btn_show_ref_spk(self, btn):
         num_act_btns, btn_ind = self.count_act_check_btns_en()
@@ -1014,7 +1026,6 @@ class Create_UI(Gtk.Window):
                     ref_spk.fill_isotope_trans(isotope)
                     
                     y_min, y_max = self.ax_en.get_ylim()
-                    print("y_min = {}, y_max = {}".format(y_min, y_max))
 
                     self.vlines_transitions = []
                     for trans in ref_spk.transitions:
