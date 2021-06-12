@@ -34,6 +34,8 @@ histo_t_fnames = ["TIME1.SPK", "TIME2.SPK", "TIME3.SPK", "TIME4.SPK",
                   "TIME5.SPK", "TIME6.SPK", "TIME7.SPK", "TIME8.SPK",
                   "TIME9.SPK", "TIME10.SPK", "TIME11.SPK", "TIME12.SPK"]
 
+glob_vukap_ver = 1.0
+
 wd_script = path.dirname(path.realpath(sys.argv[0]))
 basic_ini_fname = path.join(wd_script, "ini.json")
 refspk_fname = path.join(wd_script, "ref_transitions.json")
@@ -60,12 +62,14 @@ def main(dir_name):
     if path.exists(path.join(dir_name, "hdrainer.ini")) and \
        path.exists(path.join(dir_name, "dsp.ini")):
         #VUKAP 2.0
-        print("The spectra in folder from VUKAP 2.0")
+        print("The spectra in folder are from VUKAP 2.0")
+        glob_vukap_ver = 2.0
         cfg = parse_hdr_ini2(path.join(dir_name, "hdrainer.ini"))
         consts = parse_dsp_ini2(path.join(dir_name, "dsp.ini"))
     else:
         #VUKAP 1.0
-        print("The spectra in folder from VUKAP 1.0")
+        print("The spectra in folder are from VUKAP 1.0")
+        glob_vukap_ver = 1.0
         try:
             if ini["cfg_path"] == -1:
                 cfg = parse_cfg(path.join(dir_name, "cfg.json"))
@@ -281,9 +285,9 @@ class Calibr_t():
     def __init__(self, T_SCALE):
         self.t_scale = T_SCALE
         print("t_scale = ", self.t_scale)
-        if ini["vukap"] == 2.0:
+        if glob_vukap_ver == 2.0:
             self.adc_ns_per_ch = 4.0
-        else:
+        elif glob_vukap_ver == 1.0:
             self.adc_ns_per_ch = 8.0
         self.ns_per_ch = self.adc_ns_per_ch / ((1.0 + self.t_scale[1]) /
                                                (2.0 * self.t_scale[1] / histo_size) - 0.5 * histo_size)
