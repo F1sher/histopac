@@ -3,19 +3,14 @@ import json
 class Ref_spk():
     def __init__(self):
         None
-
         
     def set_path(self, path):
         self.path = path
-
         
     def read_spk(self):
         with open(self.path, "r") as f:
             data = f.read()
             self.trans = json.loads(data)
-
-        print(self.trans)
-
         
     def fill_isotope_trans(self, isotope):
         self.transitions = []
