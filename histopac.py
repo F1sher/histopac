@@ -59,6 +59,7 @@ def main(dir_name):
 
     global ini
     ini = parse_ini(basic_ini_fname)
+    global glob_vukap_ver
     if path.exists(path.join(dir_name, "hdrainer.ini")) and \
        path.exists(path.join(dir_name, "dsp.ini")):
         #VUKAP 2.0
@@ -284,7 +285,6 @@ class Calibr_en():
 class Calibr_t():
     def __init__(self, T_SCALE):
         self.t_scale = T_SCALE
-        print("t_scale = ", self.t_scale)
         if glob_vukap_ver == 2.0:
             self.adc_ns_per_ch = 4.0
         elif glob_vukap_ver == 1.0:
@@ -504,7 +504,6 @@ class Analyze_exp_t():
         self.bg = self.calc_bg()
 
         self.curve_exp = self.approx_exp()
-        np.savetxt("./testspk/t12.dat", t_spk, fmt="%d")
 
     def calc_bg(self):
         if self.exp_right:
