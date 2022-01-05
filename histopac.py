@@ -67,6 +67,8 @@ def main(dir_name):
         glob_vukap_ver = 2.0
         cfg = parse_hdr_ini2(path.join(dir_name, "hdrainer.ini"))
         consts = parse_dsp_ini2(path.join(dir_name, "dsp.ini"))
+        ini["hdr_path"] = path.join(dir_name, "hdrainer.ini")
+        ini["dsp_path"] = path.join(dir_name, "dsp.ini")
     else:
         #VUKAP 1.0
         print("The spectra in folder are from VUKAP 1.0")
@@ -124,7 +126,10 @@ class Analyze_peak():
         self.fwhm, self.fwhm_err = self.calc_fwhm()
         self.resol = self.calc_resol()
 
-        logging.info("mean = {}, calc = {}".format(self.mean, self.fwhm))
+        logging.info("mean = {}, integral = {}, area = {}, fwhm = {}".format(self.mean,
+                                                                             self.integral,
+                                                                             self.area,
+                                                                             self.fwhm))
 
 
     def calc_bg(self):
@@ -506,18 +511,20 @@ class Analyze_exp_t():
         self.curve_exp = self.approx_exp()
 
     def calc_bg(self):
+        avg_bins = 8
         if self.exp_right:
-            avg = np.sum(self.t_spk[self.x_r - 4:self.x_r + 4]) / 8.0
-            std = np.std(self.t_spk[self.x_r - 4:self.x_r + 4]) / 8.0
+            avg = np.sum(self.t_spk[self.x_r-avg_bins//2:self.x_r+avg_bins//2]) / avg_bins
+            std = np.std(self.t_spk[self.x_r-avg_bins//2:self.x_r+avg_bins//2]) / avg_bins
         else:
-            avg = np.sum(self.t_spk[self.x_l - 4:self.x_l + 4]) / 8.0
-            std = np.std(self.t_spk[self.x_l - 4:self.x_l + 4]) / 8.0
+            avg = np.sum(self.t_spk[self.x_l-avg_bins//2:self.x_l+avg_bins//2]) / avg_bins
+            std = np.std(self.t_spk[self.x_l-avg_bins//2:self.x_l+avg_bins//2]) / avg_bins
 
-        print("std / avg = ", std/avg)
-        if std / avg  > 0.01:
+        print("std / avg = {:.6f}".format(std / avg))
+        if std / avg > 0.1:
             return np.array((self.x_r - self.x_l) * [avg], dtype=np.int64)
         else:
             return np.array((self.x_r - self.x_l) * [0], dtype=np.int64)
+
 
     """
      Approximate exponent with A * exp (-t / tau)
@@ -531,7 +538,9 @@ class Analyze_exp_t():
         p1, p0 = np.polyfit(x, y, 1) # y = p1 * x + p0
         self.tau = -1.0 / p1
         self.A = np.exp(p0)
-
+        self.chi2 = np.sum((y - p1 * x - p0)**2 / (p1 * x + p0))
+        print("chi2 of fit = {:.4f}".format(self.chi2))
+        
         return np.array([self.A * np.exp(-i / self.tau) for i in np.arange(self.x_l, self.x_r)]) + self.bg
 
 
@@ -540,10 +549,10 @@ class Analyze_exp_t():
      False if exp is left (i.e. /|)
     """
     def is_exp_right(self):
-        l_avg_bins = np.sum(self.t_spk[self.x_l - 2:self.x_l + 2]) / 4.0
-        r_avg_bins = np.sum(self.t_spk[self.x_r - 2:self.x_r + 2]) / 4.0
+        l_avg_bins = np.sum(self.t_spk[self.x_l - 2:self.x_l + 3]) / 5.0
+        r_avg_bins = np.sum(self.t_spk[self.x_r - 2:self.x_r + 3]) / 5.0
 
-        return True if l_avg_bins > r_avg_bins else False
+        return l_avg_bins > r_avg_bins
 
 
 
@@ -948,7 +957,10 @@ class Create_UI(Gtk.Window):
             self.cfg["en_range"][btn_ind][0] = self.x_vlines_en[0]
             self.cfg["en_range"][btn_ind][1] = self.x_vlines_en[1]
             #save cfg to file
-            save_cfg(self.cfg, ini["cfg_path"])
+            if glob_vukap_ver == 1.0:
+                save_cfg(self.cfg, ini["cfg_path"])
+            elif glob_vukap_ver == 2.0:
+                save_hdr_ini2(self.cfg, ini["hdr_path"])
 
             self._clr_vlines_en()
             self.canvas_en.draw()
@@ -965,7 +977,10 @@ class Create_UI(Gtk.Window):
             self.cfg["en_range"][btn_ind][2] = self.x_vlines_en[0]
             self.cfg["en_range"][btn_ind][3] = self.x_vlines_en[1]
             #save cfg to file
-            save_cfg(self.cfg, ini["cfg_path"])
+            if glob_vukap_ver == 1.0:
+                save_cfg(self.cfg, ini["cfg_path"])
+            elif glob_vukap_ver == 2.0:
+                save_hdr_ini2(self.cfg, ini["hdr_path"])
             
             self._clr_vlines_en()
             self.canvas_en.draw()
@@ -1482,9 +1497,15 @@ def parse_hdr_ini2(path_ini_file):
     cfg = {}
     cfg["histo_folder"] = config["acquisition"]["out-foldername"]
     cfg["en_range"] = []
+    cfg["with-signal"] = config["acquisition"]["with-signal"]
+    cfg["time-acq"] = config["acquisition"]["time-acq"]
     for i in range(det_num):
-        rang = [int(xs) for xs in config["acquisition"]["det-{:d}".format(i+1)].split()]
-        cfg["en_range"].append(rang)
+        try:
+            rang = [int(xs) for xs in config["en-wins-1"]["det-{:d}".format(i+1)].split()]
+            cfg["en_range"].append(rang)
+        except KeyError:
+            rang = [int(xs) for xs in config["acquisition"]["det-{:d}".format(i+1)].split()]
+            cfg["en_range"].append(rang)
     return cfg
         
 def parse_dsp_ini2(path_ini_file):
@@ -1493,8 +1514,26 @@ def parse_dsp_ini2(path_ini_file):
     cnst = {}
     cnst["T_SCALE"] = [float(xs) for xs in config["dsp"]["t-scale"].split()]
     return cnst
-    
 
+def save_hdr_ini2(cfg, path_ini_file):
+    config = ConfigParser()
+    config["acquisition"] = {}
+    config["acquisition"]["out-foldername"] = cfg["histo_folder"]
+    config["acquisition"]["with-signal"] = cfg["with-signal"]
+    config["acquisition"]["time-acq"] = cfg["time-acq"]
+    config["en-wins-1"] = {}
+    config["en-wins-2"] = {}
+    for i in range(1, 3):
+        for j in range(1, 5):
+            config["en-wins-" + str(i)]["det-" + str(j)] = " ".join(map(str, cfg["en_range"][j-1]))
+    #config["en-wins-1"]["det-1"] = " ".join(map(str, cfg["en_range"][0]))
+    #config["en-wins-1"]["det-2"] = " ".join(map(str, cfg["en_range"][1]))
+    #config["en-wins-1"]["det-3"] = " ".join(map(str, cfg["en_range"][2]))
+    #config["en-wins-1"]["det-4"] =  " ".join(map(str, cfg["en_range"][3]))
+    
+    with open(path_ini_file, "w") as ini_file_fd:
+        config.write(ini_file_fd)
+    
 def set_ini(path_ini_file, **kwargs):
     with open(path_ini_file, "w") as fp_ini:
         ini = json.load(fp_ini)
