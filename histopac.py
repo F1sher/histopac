@@ -1187,6 +1187,7 @@ class Create_UI(Gtk.Window):
             x_l = min(self.x_vlines_t)
             x_r = max(self.x_vlines_t)
 
+            
             if num_act_btns_t:
                 analyze = Analyze_peak(self.t_spk[btn_ind_t], x_l, x_r)
                 self.analyze_curve_peak_t = self.ax_t.fill_between(np.arange(x_l, x_r+1),
