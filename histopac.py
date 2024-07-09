@@ -35,6 +35,7 @@ histo_t_fnames = ["TIME1.SPK", "TIME2.SPK", "TIME3.SPK", "TIME4.SPK",
                   "TIME9.SPK", "TIME10.SPK", "TIME11.SPK", "TIME12.SPK"]
 
 glob_vukap_ver = 1.0
+glob_ns_per_ch = 0.0
 
 wd_script = path.dirname(path.realpath(sys.argv[0]))
 basic_ini_fname = path.join(wd_script, "ini.json")
@@ -60,11 +61,13 @@ def main(dir_name):
     global ini
     ini = parse_ini(basic_ini_fname)
     global glob_vukap_ver
+    global glob_ns_per_ch
     if path.exists(path.join(dir_name, "hdrainer.ini")) and \
        path.exists(path.join(dir_name, "dsp.ini")):
         #VUKAP 2.0
         print("The spectra in folder are from VUKAP 2.0")
         glob_vukap_ver = 2.0
+        glob_ns_per_ch = float(ini["ns_per_ch"])
         cfg = parse_hdr_ini2(path.join(dir_name, "hdrainer.ini"))
         consts = parse_dsp_ini2(path.join(dir_name, "dsp.ini"))
         ini["hdr_path"] = path.join(dir_name, "hdrainer.ini")
@@ -291,7 +294,7 @@ class Calibr_t():
     def __init__(self, T_SCALE):
         self.t_scale = T_SCALE
         if glob_vukap_ver == 2.0:
-            self.adc_ns_per_ch = 4.0
+            self.adc_ns_per_ch = glob_ns_per_ch
         elif glob_vukap_ver == 1.0:
             self.adc_ns_per_ch = 8.0
         self.ns_per_ch = self.adc_ns_per_ch / ((1.0 + self.t_scale[1]) /
@@ -758,6 +761,8 @@ class Create_UI(Gtk.Window):
         btn_analyze_exp_t.connect("clicked", self.click_btn_analyze_exp_t)
         btn_clr_analyze_t = Gtk.Button(label="Clear Analyze")
         btn_clr_analyze_t.connect("clicked", self.click_btn_clr_analyze_t)
+        btn_save_spk_t = Gtk.Button(label="Save spk")
+        btn_save_spk_t.connect("clicked", self.click_btn_save_spk_t)
         btn_log_scale_t = Gtk.Button(label="Log Scale")
         btn_log_scale_t.connect("clicked", self.click_btn_log_scale_t)
         btn_sum_t = Gtk.Button(label="Sum")
@@ -766,6 +771,7 @@ class Create_UI(Gtk.Window):
         grid_btns_cntrl.attach(btn_analyze_peak_t, 0, 0, 1, 1)
         grid_btns_cntrl.attach(btn_analyze_exp_t, 1, 0, 1, 1)
         grid_btns_cntrl.attach(btn_clr_analyze_t, 0, 1, 1, 1)
+        grid_btns_cntrl.attach(btn_save_spk_t, 1, 1, 1, 1)
         grid_btns_cntrl.attach(btn_log_scale_t, 0, 2, 1, 1)
         grid_btns_cntrl.attach(btn_sum_t, 1, 2, 1, 1)
                                
@@ -944,8 +950,15 @@ class Create_UI(Gtk.Window):
             None
 
         self.canvas_en.draw()
-            
-                
+
+
+    def click_btn_save_spk_t(self, btn):
+        num_act_btns_t, btn_ind_t = self.count_act_check_btns_t()
+        np.savetxt("/home/dasalam/job/histopac/testspk/tspk.txt",
+                   np.transpose([np.arange(0, histo_size),
+                                 self.t_spk[btn_ind_t]]))
+
+        
     def click_btn_set_lwin_en(self, btn):
         if len(self.x_vlines_en) != 2:
             None
